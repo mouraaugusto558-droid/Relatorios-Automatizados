@@ -1,0 +1,17 @@
+node_modules/
+dist/
+release/
+releases/
+
+# dados e sessão do WhatsApp nunca devem ir para o git
+# (mantém a estrutura de pastas via .gitkeep, ignora todo o resto do conteúdo)
+storage/**
+!storage/**/
+!storage/**/.gitkeep
+
+.env
+*.local
+
+npm-debug.log*
+.DS_Store
+Thumbs.db

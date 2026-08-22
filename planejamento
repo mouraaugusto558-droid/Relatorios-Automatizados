@@ -1,0 +1,76 @@
+# Plano de Desenvolvimento — Sistema Node.js + React + Baileys
+
+Baseado no documento de kickoff. Este arquivo é o plano vivo do projeto: decisões de stack,
+fases, riscos e status. Atualizar conforme o projeto avança.
+
+## 1. Decisão de stack (Seção 36 do kickoff)
+
+Critério de prioridade usado em toda decisão: **Compatibilidade > Estabilidade > Baixo consumo > Simplicidade > Novidade**.
+
+| Item | Escolha | Motivo |
+|---|---|---|
+| Node.js | **24.x LTS** (Active LTS até ~04/2028; máquina local já tem v24.19.0) | Baileys exige Node ≥ 20. Node oficialmente **deixou de suportar Windows Server 2012 R2 a partir da v18** (rebaixado para "não suportado"), mas na prática continua funcionando em builds recentes desde que o Windows tenha o Universal C Runtime (UCRT) instalado via **KB2999226** (update de abril/2014). Node 22 (Maintenance LTS, EOL ~04/2027) é alternativa mais conservadora, mas Node 24 (Active LTS até 2028) dá mais tempo de vida útil sem exigir upgrade no meio do projeto. **Risco #1 do projeto — ver seção 3.** |
+| npm | O que vem empacotado com Node 24 (11.x) | Sem necessidade de fixar separadamente. |
+| TypeScript | 5.7+ (mais recente estável) | Só roda em dev/build; não afeta runtime da VPS (compila para JS puro). |
+| React | **18.3.x** (não React 19) | O navegador que renderiza a SPA roda **dentro do próprio Windows Server 2012 R2** (acesso via RDP → browser local no servidor, seção 16). Não sabemos que browser existirá lá por padrão (IE11 não serve). React 18 é mais maduro/conservador; evitar features de ponta desnecessárias. **Ação necessária:** instalar um browser moderno (Firefox ESR ou Chrome/Chromium ainda compatível com Server 2012 R2) na VPS — ver seção 3. |
+| Vite | 5.x (build only) | Ferramenta só de build; não é executada em produção. |
+| Baileys | `@whiskeysockets/baileys` (última tag estável da linha atual, fixar versão exata no `package.json`) | Exige Node ≥ 20 (hook de preinstall recusa versões menores). Usa ponte nativa em Rust para criptografia (substituiu libsignal puro-JS) — **risco #1**, ver seção 3. Processamento de imagem usa `sharp` OU `jimp` como peer dependency opcional: escolher **jimp** (puro JS, sem binário nativo) para eliminar mais um ponto de falha nativa, aceitando thumbnails um pouco mais lentos. |
+| SQLite | **better-sqlite3** (não `node:sqlite`) | `node:sqlite` ainda está em RC/experimental no Node 24 (estabiliza só no Node 26). `better-sqlite3` é maduro, síncrono (ótimo para essa carga de trabalho), amplamente testado em produção. É módulo nativo — mitigar risco compilando/baixando o binário já na máquina de dev (mesma versão exata de Node/arquitetura x64 que a VPS) e **copiando o binário pronto** para a VPS em vez de reinstalar lá. |
+| HTTP framework | **Fastify** | Mais leve em memória/CPU que Express, schema validation nativo, bom suporte a streaming (necessário para SSE). |
+| Scheduler | **croner** | Zero dependências, puro JS, mais preciso que `node-cron` (lida melhor com DST), pegada mínima de memória. |
+| WebSocket/SSE (QR code e status) | **SSE (Server-Sent Events)** nativo via stream do Fastify, sem lib extra | Único cliente local via RDP — não precisa de canal bidirecional nem da complexidade/memória de um servidor WS. HTTP puro simplifica o proxy/firewall também. |
+| Serviço Windows | **NSSM (Non-Sucking Service Manager)** | Binário único, minúsculo, décadas de uso comprovado em Windows Server antigos, reinício automático em crash, sem dependências Node adicionais (mais leve que `pm2`/`node-windows`). |
+| Estratégia de build | `tsc` (backend → CommonJS) + `vite build` (frontend → `frontend/dist`) | CommonJS no backend evita qualquer aresta de interop ESM/`require()` com módulos nativos (better-sqlite3, ponte Rust do Baileys). |
+| Estratégia de deploy | `releases/<timestamp>/` + junction `current` (`mklink /J`, funciona sem privilégio especial no Server 2012 R2) apontando para o release ativo; `storage/` fora do diretório de release, nunca sobrescrito | Permite rollback trocando o junction; nunca apaga sessão do WhatsApp nem o banco. |
+
+## 2. Estrutura do projeto (adaptada da seção 30)
+
+```text
+MeuNovoProjeto/
+├── backend/
+│   ├── src/
+│   │   ├── routes/
+│   │   ├── services/{whatsapp,reports,automation,settings}/
+│   │   ├── jobs/
+│   │   ├── database/
+│   │   ├── utils/
+│   │   └── server.ts
+│   ├── package.json
+│   └── tsconfig.json
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
+├── storage/            (git-ignored: whatsapp/, reports/, temp/, logs/, database.sqlite)
+├── scripts/            (build-release, install-service, backup)
+├── docs/               (decisões e runbooks)
+├── package.json        (workspaces root)
+├── .env.example
+└── planejamento         (este arquivo)
+```
+
+## 3. Riscos e itens de validação (ANTES de investir mais engenharia)
+
+1. **[CRÍTICO] Node 24 rodar de fato no Windows Server 2012 R2.** Não é mais "oficialmente suportado" desde a v18. Ação: assim que houver acesso à VPS, instalar o Windows Update **KB2999226** (UCRT) se ainda não estiver presente, instalar o Node 24 x64 e rodar `node -v` + carregar um módulo nativo simples (ex.: `better-sqlite3`) antes de portar a aplicação inteira. Isso é só um smoke test do runtime, não é "desenvolver na VPS" — pode/deve ser feito cedo, em paralelo ao desenvolvimento local.
+2. **Ponte nativa Rust do Baileys.** Verificar se o pacote publica binário pré-compilado para `win32-x64` (padrão em módulos napi-rs) — se sim, deve funcionar na VPS pelas mesmas razões do item 1. Testar cedo (Fase 2).
+3. **Browser na VPS.** Server 2012 R2 tem IE11 por padrão, incompatível com bundle do Vite/React moderno. Providenciar instalação de Firefox ESR ou navegador Chromium compatível.
+4. **better-sqlite3 nativo.** Mitigar copiando o binário já compilado (build local, mesma versão exata do Node) em vez de recompilar na VPS.
+
+## 4. Fases de execução
+
+- **Fase 0 — Fundação (hoje):** estrutura de pastas, workspaces, tsconfig, lint/format, git init, `.env.example`, backend mínimo com `/api/health`, frontend mínimo servido pelo backend. *(Em execução agora.)*
+- **Fase 1 — Banco de dados:** camada de acesso desacoplada (repositórios) sobre better-sqlite3; tabelas `settings`, `jobs`, `job_runs`, `reports`, `whatsapp_metadata`, `application_state`.
+- **Fase 2 — WhatsAppManager + Baileys:** instância única persistente, `connect/disconnect/getStatus/getQRCode/sendMessage/...`, persistência de sessão em `storage/whatsapp/auth`, teste de reconexão. Validar o risco nº2 aqui.
+- **Fase 3 — QR Code via SSE:** endpoint de eventos, tela de conexão no frontend.
+- **Fase 4 — Scheduler + Jobs:** `croner`, tabela `job_runs`, idempotência.
+- **Fase 5 — Relatórios:** geração HTML/CSV/TXT, envio via WhatsApp.
+- **Fase 6 — Dashboard completo:** as 4 telas da seção 29.
+- **Fase 7 — Build de produção e teste local "como se fosse VPS":** `npm run build`, rodar com `NODE_ENV=production` localmente, checklist da seção 23.
+- **Fase 8 — Empacotamento e deploy:** script de release, NSSM, junctions, rollback, backup (seções 27, 32–34).
+- **Fase 9 — Deploy real na VPS** (somente depois de tudo acima validado localmente).
+
+## 5. Status atual
+
+- [x] Kickoff lido e analisado.
+- [x] Stack decidida e documentada (com riscos explícitos).
+- [ ] Fase 0 em andamento.
