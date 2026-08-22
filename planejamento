@@ -15,7 +15,7 @@ Critério de prioridade usado em toda decisão: **Compatibilidade > Estabilidade
 | React | **18.3.x** (não React 19) | O navegador que renderiza a SPA roda **dentro do próprio Windows Server 2012 R2** (acesso via RDP → browser local no servidor, seção 16). Não sabemos que browser existirá lá por padrão (IE11 não serve). React 18 é mais maduro/conservador; evitar features de ponta desnecessárias. **Ação necessária:** instalar um browser moderno (Firefox ESR ou Chrome/Chromium ainda compatível com Server 2012 R2) na VPS — ver seção 3. |
 | Vite | 5.x (build only) | Ferramenta só de build; não é executada em produção. |
 | Baileys | `@whiskeysockets/baileys` (última tag estável da linha atual, fixar versão exata no `package.json`) | Exige Node ≥ 20 (hook de preinstall recusa versões menores). Usa ponte nativa em Rust para criptografia (substituiu libsignal puro-JS) — **risco #1**, ver seção 3. Processamento de imagem usa `sharp` OU `jimp` como peer dependency opcional: escolher **jimp** (puro JS, sem binário nativo) para eliminar mais um ponto de falha nativa, aceitando thumbnails um pouco mais lentos. |
-| SQLite | **better-sqlite3** (não `node:sqlite`) | `node:sqlite` ainda está em RC/experimental no Node 24 (estabiliza só no Node 26). `better-sqlite3` é maduro, síncrono (ótimo para essa carga de trabalho), amplamente testado em produção. É módulo nativo — mitigar risco compilando/baixando o binário já na máquina de dev (mesma versão exata de Node/arquitetura x64 que a VPS) e **copiando o binário pronto** para a VPS em vez de reinstalar lá. |
+| SQLite | **`node:sqlite`** (built-in do Node, `DatabaseSync`) — decisão revisada na Fase 0 | Tentativa inicial foi `better-sqlite3`, mas falhou na prática: sem binário prebuilt para Node 24.19 no Windows e sem Visual Studio Build Tools instalado na máquina de dev para compilar via node-gyp. Trocar para `node:sqlite` elimina inteiramente a categoria de risco "módulo nativo externo" para o banco — SQLite vem compilado dentro do próprio binário do Node, então se o Node roda no Server 2012 R2 (risco #1), o banco roda junto, sem passo de instalação/compilação separado. Custo aceito: API ainda é *release candidate* no Node 24 (estabiliza no Node 26), mas como fixamos a versão exata do Node em dev e produção, a superfície não muda sob nós durante o projeto. API confirmada compatível com o padrão usado (`exec`, `prepare().run/get/all`). |
 | HTTP framework | **Fastify** | Mais leve em memória/CPU que Express, schema validation nativo, bom suporte a streaming (necessário para SSE). |
 | Scheduler | **croner** | Zero dependências, puro JS, mais preciso que `node-cron` (lida melhor com DST), pegada mínima de memória. |
 | WebSocket/SSE (QR code e status) | **SSE (Server-Sent Events)** nativo via stream do Fastify, sem lib extra | Único cliente local via RDP — não precisa de canal bidirecional nem da complexidade/memória de um servidor WS. HTTP puro simplifica o proxy/firewall também. |
@@ -54,7 +54,8 @@ MeuNovoProjeto/
 1. **[CRÍTICO] Node 24 rodar de fato no Windows Server 2012 R2.** Não é mais "oficialmente suportado" desde a v18. Ação: assim que houver acesso à VPS, instalar o Windows Update **KB2999226** (UCRT) se ainda não estiver presente, instalar o Node 24 x64 e rodar `node -v` + carregar um módulo nativo simples (ex.: `better-sqlite3`) antes de portar a aplicação inteira. Isso é só um smoke test do runtime, não é "desenvolver na VPS" — pode/deve ser feito cedo, em paralelo ao desenvolvimento local.
 2. **Ponte nativa Rust do Baileys.** Verificar se o pacote publica binário pré-compilado para `win32-x64` (padrão em módulos napi-rs) — se sim, deve funcionar na VPS pelas mesmas razões do item 1. Testar cedo (Fase 2).
 3. **Browser na VPS.** Server 2012 R2 tem IE11 por padrão, incompatível com bundle do Vite/React moderno. Providenciar instalação de Firefox ESR ou navegador Chromium compatível.
-4. **better-sqlite3 nativo.** Mitigar copiando o binário já compilado (build local, mesma versão exata do Node) em vez de recompilar na VPS.
+4. ~~better-sqlite3 nativo~~ — **resolvido na Fase 0** trocando para `node:sqlite` (built-in), que remove esse risco por completo (ver seção 1).
+5. **`@fastify/static` precisa da major certa.** `^7.x` só suporta Fastify 4; com Fastify 5 é preciso `^8.x` (descoberto e corrigido na Fase 0 — servidor não subia por `FST_ERR_PLUGIN_VERSION_MISMATCH`).
 
 ## 4. Fases de execução
 
@@ -73,4 +74,6 @@ MeuNovoProjeto/
 
 - [x] Kickoff lido e analisado.
 - [x] Stack decidida e documentada (com riscos explícitos).
-- [ ] Fase 0 em andamento.
+- [x] **Fase 0 concluída:** estrutura de pastas, workspaces npm, backend Fastify (`/api/health`, banco `node:sqlite` com schema inicial, serviço de arquivos estáticos), frontend React/Vite mínimo consumindo `/api/health`. Build de produção (`npm run build`) e execução com `NODE_ENV=production` testados localmente com sucesso: banco criado em `storage/database.sqlite`, health check respondendo `{"status":"ok","database":"ok"}`, frontend servido pelo próprio backend. Commit inicial em `066b681`.
+- [ ] Fase 1 — repositórios/camada de acesso ao banco por entidade (settings, jobs, job_runs, reports).
+- [ ] Ação pendente do usuário: assim que houver acesso à VPS, rodar o smoke test do risco #1 (seção 3) — instalar KB2999226 + Node 24 e validar `node -v`.
