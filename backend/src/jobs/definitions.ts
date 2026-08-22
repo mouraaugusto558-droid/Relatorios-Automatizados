@@ -1,15 +1,14 @@
 import type { Logger } from "pino";
 import type { JobDefinition } from "./scheduler";
+import { runDailyReport } from "../services/reports";
 
 export function createJobDefinitions(logger: Logger): JobDefinition[] {
   return [
     {
-      id: "relatorio-manha",
-      name: "Relatório 08:00",
+      id: "relatorio-diario",
+      name: "Relatório diário 08:00",
       cronExpression: "0 8 * * *",
-      async run(): Promise<void> {
-        logger.info("relatorio-manha: geração de relatório ainda não implementada (Fase 5)");
-      }
+      run: runDailyReport
     },
     {
       id: "automacao-meio-dia",
@@ -17,14 +16,6 @@ export function createJobDefinitions(logger: Logger): JobDefinition[] {
       cronExpression: "0 12 * * *",
       async run(): Promise<void> {
         logger.info("automacao-meio-dia: automação ainda não implementada");
-      }
-    },
-    {
-      id: "relatorio-noite",
-      name: "Relatório 18:00",
-      cronExpression: "0 18 * * *",
-      async run(): Promise<void> {
-        logger.info("relatorio-noite: geração de relatório ainda não implementada (Fase 5)");
       }
     }
   ];

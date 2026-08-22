@@ -13,6 +13,10 @@ export const env = {
   port: Number(process.env.PORT ?? 3000),
   databasePath: resolveFromRoot(process.env.DATABASE_PATH ?? "./storage/database.sqlite"),
   whatsappAuthPath: resolveFromRoot(process.env.WHATSAPP_AUTH_PATH ?? "./storage/whatsapp/auth"),
+  reportsPath: resolveFromRoot(process.env.REPORTS_PATH ?? "./storage/reports"),
   logLevel: process.env.LOG_LEVEL ?? "info",
-  isProduction: (process.env.NODE_ENV ?? "development") === "production"
+  isProduction: (process.env.NODE_ENV ?? "development") === "production",
+  otodataApiKey: process.env.OTODATA_API_KEY,
+  openaiApiKey: process.env.OPENAI_API_KEY,
+  reportRecipientNumber: process.env.REPORT_RECIPIENT_NUMBER
 };
