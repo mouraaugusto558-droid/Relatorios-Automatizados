@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { EventEmitter } from "node:events";
 import type { AnyMessageContent, WASocket } from "@whiskeysockets/baileys";
 import pino from "pino";
 
@@ -11,6 +12,7 @@ export type WhatsAppConnectionStatus = "disconnected" | "connecting" | "qr" | "c
 export interface WhatsAppStatus {
   status: WhatsAppConnectionStatus;
   phoneNumber: string | null;
+  qrCode: string | null;
 }
 
 export interface WhatsAppManager {
@@ -18,6 +20,7 @@ export interface WhatsAppManager {
   disconnect(): Promise<void>;
   getStatus(): WhatsAppStatus;
   getQRCode(): string | null;
+  onChange(listener: (status: WhatsAppStatus) => void): () => void;
   sendMessage(jid: string, text: string): Promise<void>;
   sendImage(jid: string, image: Buffer, caption?: string): Promise<void>;
   sendDocument(jid: string, document: Buffer, fileName: string, mimetype: string): Promise<void>;
@@ -25,6 +28,7 @@ export interface WhatsAppManager {
 
 export function createWhatsAppManager(authPath: string): WhatsAppManager {
   const logger = pino({ level: "warn" });
+  const emitter = new EventEmitter();
 
   let socket: WASocket | null = null;
   let status: WhatsAppConnectionStatus = "disconnected";
@@ -32,9 +36,18 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
   let phoneNumber: string | null = null;
   let manualDisconnect = false;
 
+  function currentStatus(): WhatsAppStatus {
+    return { status, phoneNumber, qrCode };
+  }
+
+  function notify(): void {
+    emitter.emit("change", currentStatus());
+  }
+
   async function connectInternal(): Promise<void> {
     status = "connecting";
     manualDisconnect = false;
+    notify();
 
     const baileys = await import("@whiskeysockets/baileys");
     const { makeWASocket, useMultiFileAuthState, DisconnectReason } = baileys;
@@ -56,12 +69,14 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
       if (qr) {
         qrCode = qr;
         status = "qr";
+        notify();
       }
 
       if (connection === "open") {
         status = "connected";
         qrCode = null;
         phoneNumber = socket?.user?.id?.split(":")[0] ?? null;
+        notify();
       }
 
       if (connection === "close") {
@@ -71,10 +86,12 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
 
         if (!manualDisconnect && !loggedOut) {
           status = "connecting";
+          notify();
           void connectInternal();
         } else {
           status = "disconnected";
           qrCode = null;
+          notify();
         }
       }
     });
@@ -95,10 +112,16 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
       status = "disconnected";
       qrCode = null;
       phoneNumber = null;
+      notify();
     },
 
     getStatus(): WhatsAppStatus {
-      return { status, phoneNumber };
+      return currentStatus();
+    },
+
+    onChange(listener: (status: WhatsAppStatus) => void): () => void {
+      emitter.on("change", listener);
+      return () => emitter.off("change", listener);
     },
 
     getQRCode(): string | null {

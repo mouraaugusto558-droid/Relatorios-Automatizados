@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
+import { WhatsAppPanel } from "./components/WhatsAppPanel";
 
 interface HealthResponse {
   status: string;
   uptime: number;
   database: string;
-  whatsapp: string;
 }
 
 export function App() {
@@ -20,17 +20,22 @@ export function App() {
 
   return (
     <main style={{ fontFamily: "sans-serif", padding: "2rem" }}>
-      <h1>Painel WhatsApp — Fase 0</h1>
-      {error && <p style={{ color: "crimson" }}>Erro ao consultar /api/health: {error}</p>}
-      {!error && !health && <p>Consultando /api/health...</p>}
-      {health && (
-        <ul>
-          <li>status: {health.status}</li>
-          <li>uptime: {health.uptime.toFixed(1)}s</li>
-          <li>database: {health.database}</li>
-          <li>whatsapp: {health.whatsapp}</li>
-        </ul>
-      )}
+      <h1>Painel</h1>
+
+      <section style={{ marginBottom: "1.5rem" }}>
+        <h2>Sistema</h2>
+        {error && <p style={{ color: "crimson" }}>Erro ao consultar /api/health: {error}</p>}
+        {!error && !health && <p>Consultando /api/health...</p>}
+        {health && (
+          <ul>
+            <li>status: {health.status}</li>
+            <li>uptime: {health.uptime.toFixed(1)}s</li>
+            <li>database: {health.database}</li>
+          </ul>
+        )}
+      </section>
+
+      <WhatsAppPanel />
     </main>
   );
 }

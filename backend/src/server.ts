@@ -5,12 +5,14 @@ import fastifyStatic from "@fastify/static";
 import { env } from "./config/env";
 import { loggerOptions } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
+import { whatsappRoutes } from "./routes/whatsapp";
 import { getWhatsAppManager } from "./services/whatsapp";
 
 async function main(): Promise<void> {
   const app = Fastify({ logger: loggerOptions });
 
   await app.register(healthRoutes);
+  await app.register(whatsappRoutes);
 
   const frontendDist = path.resolve(__dirname, "..", "..", "frontend", "dist");
   if (fs.existsSync(frontendDist)) {
