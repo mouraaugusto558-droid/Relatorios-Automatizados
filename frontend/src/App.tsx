@@ -1,41 +1,41 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { DashboardPanel } from "./components/DashboardPanel";
 import { WhatsAppPanel } from "./components/WhatsAppPanel";
+import { JobsPanel } from "./components/JobsPanel";
+import { ReportsPanel } from "./components/ReportsPanel";
 
-interface HealthResponse {
-  status: string;
-  uptime: number;
-  database: string;
-}
+const TABS = [
+  { id: "dashboard", label: "Dashboard" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "jobs", label: "Jobs" },
+  { id: "reports", label: "Relatórios" }
+] as const;
+
+type TabId = (typeof TABS)[number]["id"];
 
 export function App() {
-  const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetch("/api/health")
-      .then((res) => res.json())
-      .then(setHealth)
-      .catch((err) => setError(String(err)));
-  }, []);
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
 
   return (
-    <main style={{ fontFamily: "sans-serif", padding: "2rem" }}>
+    <main style={{ fontFamily: "sans-serif", padding: "2rem", maxWidth: 900, margin: "0 auto" }}>
       <h1>Painel</h1>
 
-      <section style={{ marginBottom: "1.5rem" }}>
-        <h2>Sistema</h2>
-        {error && <p style={{ color: "crimson" }}>Erro ao consultar /api/health: {error}</p>}
-        {!error && !health && <p>Consultando /api/health...</p>}
-        {health && (
-          <ul>
-            <li>status: {health.status}</li>
-            <li>uptime: {health.uptime.toFixed(1)}s</li>
-            <li>database: {health.database}</li>
-          </ul>
-        )}
-      </section>
+      <nav style={{ display: "flex", gap: "0.5rem", marginBottom: "1.5rem" }}>
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            style={{ fontWeight: activeTab === tab.id ? "bold" : "normal" }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-      <WhatsAppPanel />
+      {activeTab === "dashboard" && <DashboardPanel />}
+      {activeTab === "whatsapp" && <WhatsAppPanel />}
+      {activeTab === "jobs" && <JobsPanel />}
+      {activeTab === "reports" && <ReportsPanel />}
     </main>
   );
 }

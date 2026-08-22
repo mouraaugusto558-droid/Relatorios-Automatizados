@@ -14,10 +14,12 @@ export async function jobsRoutes(app: FastifyInstance): Promise<void> {
   const jobRunsRepository = createJobRunsRepository(database);
 
   app.get("/api/jobs", async () => {
+    const scheduler = getScheduler();
     return jobsRepository.list().map((job) => ({
       ...job,
       isRunning: jobRunsRepository.isRunning(job.id),
-      lastRun: jobRunsRepository.getLast(job.id) ?? null
+      lastRun: jobRunsRepository.getLast(job.id) ?? null,
+      nextRun: scheduler.getNextRun(job.id)?.toISOString() ?? null
     }));
   });
 

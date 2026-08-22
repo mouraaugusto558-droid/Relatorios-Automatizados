@@ -13,6 +13,7 @@ export interface WhatsAppStatus {
   status: WhatsAppConnectionStatus;
   phoneNumber: string | null;
   qrCode: string | null;
+  lastEventAt: string | null;
 }
 
 export interface WhatsAppManager {
@@ -40,12 +41,14 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
   let manualDisconnect = false;
   let reconnectAttempts = 0;
   let reconnectTimer: NodeJS.Timeout | null = null;
+  let lastEventAt: string | null = null;
 
   function currentStatus(): WhatsAppStatus {
-    return { status, phoneNumber, qrCode };
+    return { status, phoneNumber, qrCode, lastEventAt };
   }
 
   function notify(): void {
+    lastEventAt = new Date().toISOString();
     emitter.emit("change", currentStatus());
   }
 
@@ -81,7 +84,8 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
     socket = makeWASocket({
       auth: state,
       logger,
-      printQRInTerminal: false
+      printQRInTerminal: false,
+      browser: ["Painel de Relatórios", "Chrome", "1.0.0"]
     });
 
     socket.ev.on("creds.update", saveCreds);

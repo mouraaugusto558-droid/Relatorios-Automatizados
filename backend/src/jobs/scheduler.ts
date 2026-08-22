@@ -15,6 +15,7 @@ export interface Scheduler {
   stop(): void;
   runNow(jobId: string): Promise<void>;
   setEnabled(jobId: string, enabled: boolean): void;
+  getNextRun(jobId: string): Date | null;
 }
 
 export function createScheduler(
@@ -106,6 +107,10 @@ export function createScheduler(
         existingTask.stop();
         tasks.delete(jobId);
       }
+    },
+
+    getNextRun(jobId: string): Date | null {
+      return tasks.get(jobId)?.nextRun() ?? null;
     }
   };
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useWhatsAppStatus } from "../hooks/useWhatsAppStatus";
+import { formatDateTime } from "../utils/formatDateTime";
 
 const STATUS_LABELS: Record<string, string> = {
   disconnected: "Desconectado",
@@ -34,6 +35,16 @@ export function WhatsAppPanel() {
     }
   }
 
+  async function handleReconnect() {
+    setActionPending(true);
+    try {
+      await postAction("/api/whatsapp/disconnect");
+      await postAction("/api/whatsapp/connect");
+    } finally {
+      setActionPending(false);
+    }
+  }
+
   const label = status ? STATUS_LABELS[status.status] ?? status.status : "Carregando...";
 
   return (
@@ -42,6 +53,7 @@ export function WhatsAppPanel() {
       <p>
         Status: <strong>{label}</strong>
       </p>
+      <p>Último evento: {formatDateTime(status?.lastEventAt)}</p>
 
       {status?.status === "connected" && status.phoneNumber && (
         <p>Número conectado: {status.phoneNumber}</p>
@@ -57,6 +69,9 @@ export function WhatsAppPanel() {
       <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
         <button onClick={handleConnect} disabled={actionPending || status?.status === "connected"}>
           Conectar
+        </button>
+        <button onClick={handleReconnect} disabled={actionPending}>
+          Reconectar
         </button>
         <button onClick={handleDisconnect} disabled={actionPending || status?.status === "disconnected"}>
           Desconectar

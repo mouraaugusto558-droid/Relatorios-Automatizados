@@ -7,6 +7,7 @@ import { loggerOptions } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
 import { whatsappRoutes } from "./routes/whatsapp";
 import { jobsRoutes } from "./routes/jobs";
+import { reportsRoutes } from "./routes/reports";
 import { getWhatsAppManager } from "./services/whatsapp";
 import { getScheduler } from "./jobs";
 
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
   await app.register(healthRoutes);
   await app.register(whatsappRoutes);
   await app.register(jobsRoutes);
+  await app.register(reportsRoutes);
 
   const frontendDist = path.resolve(__dirname, "..", "..", "frontend", "dist");
   if (fs.existsSync(frontendDist)) {

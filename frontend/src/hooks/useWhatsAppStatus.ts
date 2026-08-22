@@ -4,6 +4,7 @@ export interface WhatsAppStatusPayload {
   status: "disconnected" | "connecting" | "qr" | "connected";
   phoneNumber: string | null;
   qrDataUrl: string | null;
+  lastEventAt: string | null;
 }
 
 export function useWhatsAppStatus(): WhatsAppStatusPayload | null {

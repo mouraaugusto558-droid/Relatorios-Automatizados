@@ -6,13 +6,15 @@ interface WhatsAppStatusPayload {
   status: WhatsAppStatus["status"];
   phoneNumber: string | null;
   qrDataUrl: string | null;
+  lastEventAt: string | null;
 }
 
 async function toPayload(status: WhatsAppStatus): Promise<WhatsAppStatusPayload> {
   return {
     status: status.status,
     phoneNumber: status.phoneNumber,
-    qrDataUrl: status.qrCode ? await QRCode.toDataURL(status.qrCode) : null
+    qrDataUrl: status.qrCode ? await QRCode.toDataURL(status.qrCode) : null,
+    lastEventAt: status.lastEventAt
   };
 }
 
