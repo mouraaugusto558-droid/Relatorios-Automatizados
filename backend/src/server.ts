@@ -14,6 +14,17 @@ import { getScheduler } from "./jobs";
 async function main(): Promise<void> {
   const app = Fastify({ logger: loggerOptions });
 
+  // Rede de segurança do processo: isto é um serviço de longa duração (scheduler +
+  // WhatsApp) e não deve morrer por causa de uma rejeição/exceção que escapou de
+  // algum ponto não previsto — preferimos logar e seguir vivo a perder a automação
+  // do dia até alguém reiniciar manualmente.
+  process.on("unhandledRejection", (reason) => {
+    app.log.error(reason, "unhandledRejection não tratada");
+  });
+  process.on("uncaughtException", (error) => {
+    app.log.error(error, "uncaughtException não tratada");
+  });
+
   await app.register(healthRoutes);
   await app.register(whatsappRoutes);
   await app.register(jobsRoutes);

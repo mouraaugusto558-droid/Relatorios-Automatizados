@@ -43,13 +43,16 @@ export async function whatsappRoutes(app: FastifyInstance): Promise<void> {
 
     const send = async (status: WhatsAppStatus): Promise<void> => {
       const payload = await toPayload(status);
+      if (reply.raw.writableEnded) return;
       reply.raw.write(`data: ${JSON.stringify(payload)}\n\n`);
     };
 
-    await send(manager.getStatus());
-    const unsubscribe = manager.onChange((status) => {
-      void send(status);
-    });
+    const safeSend = (status: WhatsAppStatus): void => {
+      send(status).catch((error) => app.log.error(error, "falha ao enviar evento SSE do WhatsApp"));
+    };
+
+    await send(manager.getStatus()).catch((error) => app.log.error(error, "falha ao enviar status inicial via SSE"));
+    const unsubscribe = manager.onChange(safeSend);
 
     request.raw.on("close", () => {
       unsubscribe();

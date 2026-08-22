@@ -13,10 +13,14 @@ export async function runDailyReport(): Promise<void> {
   }
 
   const devices = await getOtodataClient().getDevices();
+  if (!Array.isArray(devices)) {
+    throw new Error("Resposta inesperada da API Otodata (esperava uma lista de dispositivos)");
+  }
+
   const reportText = buildDailyReportText(devices);
 
   fs.mkdirSync(env.reportsPath, { recursive: true });
-  const fileName = `relatorio-diario-${new Date().toISOString().slice(0, 10)}.txt`;
+  const fileName = `relatorio-diario-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
   const filePath = path.join(env.reportsPath, fileName);
   fs.writeFileSync(filePath, reportText, "utf8");
 

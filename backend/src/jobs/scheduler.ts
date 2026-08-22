@@ -40,19 +40,25 @@ export function createScheduler(
   }
 
   async function executeJob(definition: JobDefinition): Promise<void> {
-    if (jobRunsRepository.isRunning(definition.id)) {
-      logger.warn(`job "${definition.id}" já está em execução, disparo ignorado`);
-      return;
-    }
-
-    const runId = jobRunsRepository.start(definition.id);
     try {
-      await definition.run();
-      jobRunsRepository.finish(runId, "success");
+      if (jobRunsRepository.isRunning(definition.id)) {
+        logger.warn(`job "${definition.id}" já está em execução, disparo ignorado`);
+        return;
+      }
+
+      const runId = jobRunsRepository.start(definition.id);
+      try {
+        await definition.run();
+        jobRunsRepository.finish(runId, "success");
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        jobRunsRepository.finish(runId, "error", message);
+        logger.error(error, `job "${definition.id}" falhou`);
+      }
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      jobRunsRepository.finish(runId, "error", message);
-      logger.error(error, `job "${definition.id}" falhou`);
+      // Falha antes/depois do registro do run (ex.: banco indisponível no instante do disparo).
+      // Nunca deixar escapar como rejeição não tratada — o Cron chama executeJob sem await.
+      logger.error(error, `falha inesperada ao processar o job "${definition.id}"`);
     }
   }
 
