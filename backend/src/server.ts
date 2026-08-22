@@ -6,13 +6,16 @@ import { env } from "./config/env";
 import { loggerOptions } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
 import { whatsappRoutes } from "./routes/whatsapp";
+import { jobsRoutes } from "./routes/jobs";
 import { getWhatsAppManager } from "./services/whatsapp";
+import { getScheduler } from "./jobs";
 
 async function main(): Promise<void> {
   const app = Fastify({ logger: loggerOptions });
 
   await app.register(healthRoutes);
   await app.register(whatsappRoutes);
+  await app.register(jobsRoutes);
 
   const frontendDist = path.resolve(__dirname, "..", "..", "frontend", "dist");
   if (fs.existsSync(frontendDist)) {
@@ -41,6 +44,8 @@ async function main(): Promise<void> {
   getWhatsAppManager()
     .connect()
     .catch((error) => app.log.error(error, "falha ao iniciar conexão com o WhatsApp"));
+
+  getScheduler().start();
 }
 
 main();

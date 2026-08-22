@@ -26,6 +26,9 @@ export interface WhatsAppManager {
   sendDocument(jid: string, document: Buffer, fileName: string, mimetype: string): Promise<void>;
 }
 
+const MAX_RECONNECT_DELAY_MS = 30_000;
+const BASE_RECONNECT_DELAY_MS = 1_000;
+
 export function createWhatsAppManager(authPath: string): WhatsAppManager {
   const logger = pino({ level: "warn" });
   const emitter = new EventEmitter();
@@ -35,6 +38,8 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
   let qrCode: string | null = null;
   let phoneNumber: string | null = null;
   let manualDisconnect = false;
+  let reconnectAttempts = 0;
+  let reconnectTimer: NodeJS.Timeout | null = null;
 
   function currentStatus(): WhatsAppStatus {
     return { status, phoneNumber, qrCode };
@@ -42,6 +47,24 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
 
   function notify(): void {
     emitter.emit("change", currentStatus());
+  }
+
+  function scheduleReconnect(): void {
+    if (reconnectTimer) return;
+
+    const delay = Math.min(BASE_RECONNECT_DELAY_MS * 2 ** reconnectAttempts, MAX_RECONNECT_DELAY_MS);
+    reconnectAttempts += 1;
+
+    status = "connecting";
+    notify();
+
+    reconnectTimer = setTimeout(() => {
+      reconnectTimer = null;
+      connectInternal().catch((error) => {
+        logger.error(error, "falha ao reconectar ao WhatsApp");
+        scheduleReconnect();
+      });
+    }, delay);
   }
 
   async function connectInternal(): Promise<void> {
@@ -75,6 +98,7 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
       if (connection === "open") {
         status = "connected";
         qrCode = null;
+        reconnectAttempts = 0;
         phoneNumber = socket?.user?.id?.split(":")[0] ?? null;
         notify();
       }
@@ -85,9 +109,7 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
         const loggedOut = statusCode === DisconnectReason.loggedOut;
 
         if (!manualDisconnect && !loggedOut) {
-          status = "connecting";
-          notify();
-          void connectInternal();
+          scheduleReconnect();
         } else {
           status = "disconnected";
           qrCode = null;
@@ -105,6 +127,11 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
 
     async disconnect(): Promise<void> {
       manualDisconnect = true;
+      reconnectAttempts = 0;
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+      }
       if (socket) {
         await socket.logout().catch(() => undefined);
         socket = null;
