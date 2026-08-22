@@ -5,6 +5,7 @@ import fastifyStatic from "@fastify/static";
 import { env } from "./config/env";
 import { loggerOptions } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
+import { getWhatsAppManager } from "./services/whatsapp";
 
 async function main(): Promise<void> {
   const app = Fastify({ logger: loggerOptions });
@@ -34,6 +35,10 @@ async function main(): Promise<void> {
     app.log.error(error);
     process.exit(1);
   }
+
+  getWhatsAppManager()
+    .connect()
+    .catch((error) => app.log.error(error, "falha ao iniciar conexão com o WhatsApp"));
 }
 
 main();
