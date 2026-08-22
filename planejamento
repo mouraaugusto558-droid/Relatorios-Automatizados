@@ -76,5 +76,15 @@ MeuNovoProjeto/
 - [x] Stack decidida e documentada (com riscos explícitos).
 - [x] **Fase 0 concluída:** estrutura de pastas, workspaces npm, backend Fastify (`/api/health`, banco `node:sqlite` com schema inicial, serviço de arquivos estáticos), frontend React/Vite mínimo consumindo `/api/health`. Build de produção (`npm run build`) e execução com `NODE_ENV=production` testados localmente com sucesso: banco criado em `storage/database.sqlite`, health check respondendo `{"status":"ok","database":"ok"}`, frontend servido pelo próprio backend. Commit inicial em `066b681`.
 - [x] **Auditoria de riscos críticos concluída** (Baileys + compatibilidade de produção). Resultado: Baileys trocado de `latest` (7.0.0-rc, WASM) para `legacy` (6.7.24, 100% JS); checklist concreto de pré-requisitos de VPS documentado na seção 3, item 1.
-- [ ] Fase 1 em andamento — repositórios/camada de acesso ao banco por entidade (settings, jobs, job_runs, reports).
+- [x] **Fase 1 concluída:** camada de repositórios desacoplada sobre `node:sqlite` (`backend/src/database/`):
+  - `keyValueRepository` genérico (reaproveitado por `settings`, `whatsapp_metadata`, `application_state`, com allow-list de tabelas contra SQL injection via nome de tabela).
+  - `jobsRepository` (upsert/list/findById/setEnabled).
+  - `jobRunsRepository` (start/finish/isRunning/getLast/listRecent — base para a idempotência exigida na seção 12 do kickoff).
+  - `reportsRepository` (create/updateStatus/getById/list).
+  - Nenhum repositório importa o singleton do banco diretamente — todos recebem a instância via parâmetro (`DatabaseSync`), o que permitiu testá-los com banco `:memory:` e mantém a porta aberta para trocar o driver no futuro (seção 11 do kickoff).
+  - 15 testes automatizados com `node:test` (nativo, zero dependência) cobrindo os 4 repositórios — `npm run test --workspace backend`.
+  - **Bug real encontrado e corrigido durante os testes:** ordenar por `created_at`/`started_at` (resolução de 1s do `datetime('now')` do SQLite) é instável quando há múltiplos inserts no mesmo segundo — trocado para `ORDER BY id DESC` em `reportsRepository` e `jobRunsRepository`.
+  - **Problema de build encontrado e corrigido:** `tsconfig.json` incluía `*.test.ts` no build de produção (arquivos de teste vazavam para `backend/dist/`). Separado em `tsconfig.build.json` (exclui testes, usado pelo `build`) mantendo `tsconfig.json` base cobrindo os testes no `typecheck`.
+  - Build de produção completo (`npm run build` + `NODE_ENV=production node backend/dist/server.js`) revalidado do zero após as mudanças: health check OK, banco recriado do zero com sucesso.
+- [ ] Fase 2 — WhatsAppManager + Baileys (`@whiskeysockets/baileys@6.7.24`), persistência de sessão, teste de conexão/reconexão real.
 - [ ] Ação pendente do usuário: assim que houver acesso à VPS, rodar o smoke test do risco #1 (seção 3) — cadeia de updates + VC++ Redist + Node 24 + `node:sqlite`.

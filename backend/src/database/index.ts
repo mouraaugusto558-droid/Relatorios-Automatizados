@@ -19,7 +19,7 @@ export function getDatabase(): DatabaseSync {
   return db;
 }
 
-function runMigrations(database: DatabaseSync): void {
+export function runMigrations(database: DatabaseSync): void {
   database.exec(`
     CREATE TABLE IF NOT EXISTS settings (
       key TEXT PRIMARY KEY,
