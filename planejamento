@@ -23,6 +23,43 @@ Critério de prioridade usado em toda decisão: **Compatibilidade > Estabilidade
 | Estratégia de build | `tsc` (backend → CommonJS) + `vite build` (frontend → `frontend/dist`) | CommonJS no backend evita qualquer aresta de interop ESM/`require()` — hoje o backend não tem nenhum módulo nativo (`node:sqlite` é built-in, Baileys `legacy` é JS puro), mas mantém a opção simples caso isso mude. |
 | Estratégia de deploy | `releases/<timestamp>/` + junction `current` (`mklink /J`, funciona sem privilégio especial no Server 2012 R2) apontando para o release ativo; `storage/` fora do diretório de release, nunca sobrescrito | Permite rollback trocando o junction; nunca apaga sessão do WhatsApp nem o banco. |
 
+## 1.1 Fonte de dados dos relatórios — Otodata Nee-Vo API v29
+
+Documento `GUIA - API.pdf` (na raiz do projeto) analisado. É a API que alimenta o módulo de
+**relatórios** (seção 13 do kickoff, Fase 5) — não tem relação com Baileys/WhatsApp, é uma API
+REST/WCF de terceiros para monitores remotos de nível de tanque (propano/diesel/etc.).
+
+- **Base URLs:** primária `https://neevo.otodata.ca/public/api/v1/DataService.svc` (ou
+  `https://telematics.otodatanetwork.com:4431/v1.0/DataService.svc`), com uma **secundária**
+  equivalente (`neevo2`/`telematics02`) para failover — o cliente HTTP deve tentar a secundária se a
+  primária falhar.
+- **Auth:** API key própria do cliente Otodata (não é a nossa, é gerada no portal Nee-Vo), via
+  `?k=API_KEY` na URL ou header `Authorization: Bearer API_KEY`. HTTPS obrigatório. Guardar a key na
+  tabela `settings` (já existe), nunca no `.env` versionado.
+- **Formato:** XML por padrão; pedir JSON com header `Accept: application/json; charset=utf-8` (e
+  `Accept-Encoding: gzip` para reduzir banda).
+- **Endpoints relevantes para relatório de níveis de tanque:**
+  - `GetDevices` — lista todos os tanques/dispositivos da conta (suporta `lastDateUtc` para trazer só
+    o que mudou).
+  - `GetDevice` / `GetSampleDevice` — um dispositivo específico / um "dummy" para testes sem gastar
+    quota.
+  - `GetTankLevels` / `GetDeviceTankLevels` — leituras históricas por período (`startDateUtc`/
+    `endDateUtc` obrigatórios), **paginado em blocos de até 10000 leituras** — o cliente precisa
+    iterar `page` até `Count < 10000`.
+  - `DownloadReport` — a própria Otodata já gera um relatório pronto (Excel/CSV/`SuburbanSoftware`)
+    como stream de bytes; pode ser uma alternativa mais simples que montar o relatório na mão a
+    partir de `GetTankLevels`, a avaliar na Fase 5.
+  - `GetGasMeters` — equivalente para medidores de gás, se aplicável ao negócio.
+- **Modelo `Device`** tem os campos que provavelmente compõem o relatório: `Inventory`, `LastLevel`
+  (0.0–1.0), `LastRead`/`LastFill` (UTC, atenção: `1900-01-01` = "sem leitura"), `Status` (texto:
+  `OK`, `LOW ALARM`, `CRITICAL LOW ALARM`, `COMM TROUBLE`, etc.), `HoursToEmpty`, consumo
+  (`Last24hr`/`Last48hr`/`Last72hr`/`LastWeek`), `BatteryAlarm`/`BatteryLevel`, `SignalStrength`,
+  coordenadas GPS, `Product`, `TankFormType`.
+- **Sem HTTP client novo:** `fetch` global do Node 24 é suficiente, zero dependência nova.
+- Isso muda o desenho da Fase 5: vai existir um `services/otodata/` (cliente HTTP com failover
+  primário/secundário + paginação) separado de `services/reports/` (que consome os dados e monta o
+  relatório/envia por WhatsApp). Ainda não implementado — é conhecimento para quando chegarmos lá.
+
 ## 2. Estrutura do projeto (adaptada da seção 30)
 
 ```text
@@ -56,6 +93,8 @@ MeuNovoProjeto/
 3. **Browser na VPS.** Server 2012 R2 tem IE11 por padrão, incompatível com bundle do Vite/React moderno (Vite mira browsers com suporte a ES modules nativos). Providenciar instalação de Firefox ESR ou navegador Chromium compatível.
 4. ~~better-sqlite3 nativo~~ — **resolvido na Fase 0** trocando para `node:sqlite` (built-in), que remove esse risco por completo (ver seção 1 da tabela de stack).
 5. **`@fastify/static` precisa da major certa.** `^7.x` só suporta Fastify 4; com Fastify 5 é preciso `^8.x` (descoberto e corrigido na Fase 0 — servidor não subia por `FST_ERR_PLUGIN_VERSION_MISMATCH`).
+6. **[Encontrado na revisão pré-Fase 2] Baileys `6.7.24` é ESM puro (`"type": "module"`), backend é CommonJS.** `require('@whiskeysockets/baileys')` quebraria com `ERR_REQUIRE_ESM`. Correção: trocar `"module"` do `tsconfig.json` do backend de `CommonJS` para `NodeNext` (mantendo `package.json` do backend em `"type": "commonjs"`) — assim o TypeScript preserva `import()` dinâmico como import real do Node em vez de rebaixar para `require()` (o que aconteceria com `"module": "CommonJS"`). Só o módulo que carrega o Baileys usa `await import(...)`; o resto do backend continua CJS normal.
+7. **[Encontrado na revisão pré-Fase 2] `sharp` é peer dependency não-opcional do Baileys `6.7.24`** (`peerDependenciesMeta` só marca `jimp`, `audio-decode` e `link-preview-js` como opcionais — `sharp` fica de fora). Como npm 7+ auto-instala peer dependencies não-opcionais quando ausentes, isso poderia reintroduzir sem querer uma dependência nativa (`sharp`/`libvips`) que decidimos evitar. Mitigação: instalar `jimp` explicitamente como dependência direta do backend (Baileys prefere `sharp` só se presente, cai para `jimp` automaticamente) e confirmar no `npm install` real que `sharp` não entrou no `node_modules`.
 
 ## 4. Fases de execução
 
