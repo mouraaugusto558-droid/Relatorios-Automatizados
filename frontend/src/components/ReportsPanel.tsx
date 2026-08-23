@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   FileSpreadsheet,
   Search,
@@ -13,42 +13,47 @@ import {
 } from "lucide-react";
 import { useReports, type Report } from "../hooks/useReports";
 import { useToast } from "../context/ToastContext";
+import { useApiAction } from "../hooks/useApiAction";
+import { useSearchAndFilter } from "../hooks/useSearchAndFilter";
+import { StatusPill } from "./StatusPill";
 import { formatDateTime, formatRelativeTime } from "../utils/formatDateTime";
 
 type FilterStatus = "all" | "sent" | "generated" | "pending" | "error";
+
+const REPORT_SEARCH_FIELDS: readonly (keyof Report)[] = ["name", "filePath"];
+
+function matchesReportFilter(report: Report, filterStatus: FilterStatus): boolean {
+  return filterStatus === "all" || report.status === filterStatus;
+}
 
 function ReportStatusBadge({ status }: { status: Report["status"] }) {
   switch (status) {
     case "sent":
       return (
-        <span className="pill pill-success">
-          <CheckCircle2 size={13} />
+        <StatusPill tone="success" icon={<CheckCircle2 size={13} />}>
           Enviado
-        </span>
+        </StatusPill>
       );
     case "generated":
       return (
-        <span className="pill pill-info">
-          <FileText size={13} />
+        <StatusPill tone="info" icon={<FileText size={13} />}>
           Gerado
-        </span>
+        </StatusPill>
       );
     case "pending":
       return (
-        <span className="pill pill-warning">
-          <Clock size={13} />
+        <StatusPill tone="warning" icon={<Clock size={13} />}>
           Pendente
-        </span>
+        </StatusPill>
       );
     case "error":
       return (
-        <span className="pill pill-error">
-          <AlertCircle size={13} />
+        <StatusPill tone="error" icon={<AlertCircle size={13} />}>
           Erro
-        </span>
+        </StatusPill>
       );
     default:
-      return <span className="pill pill-neutral">{status}</span>;
+      return <StatusPill tone="neutral">{status}</StatusPill>;
   }
 }
 
@@ -59,16 +64,20 @@ export function ReportsPanel() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [copiedId, setCopiedId] = useState<number | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    try {
-      await refresh();
-      success("Lista atualizada", "Os relatórios foram recarregados com sucesso.");
-    } finally {
-      setIsRefreshing(false);
-    }
+  const refreshAction = useApiAction(refresh, {
+    success: () => ({
+      title: "Lista atualizada",
+      message: "Os relatórios foram recarregados com sucesso."
+    }),
+    error: () => ({
+      title: "Falha ao atualizar",
+      message: "Não foi possível recarregar a lista de relatórios."
+    })
+  });
+
+  const handleRefresh = () => {
+    void refreshAction.run();
   };
 
   const handleCopyPath = (filePath: string, id: number) => {
@@ -84,25 +93,18 @@ export function ReportsPanel() {
   const pendingCount = reports.filter((r) => r.status === "pending").length;
   const errorCount = reports.filter((r) => r.status === "error").length;
 
-  const filteredReports = useMemo(() => {
-    return reports.filter((report) => {
-      const matchesSearch =
-        report.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        report.filePath.toLowerCase().includes(searchTerm.toLowerCase());
-
-      if (!matchesSearch) return false;
-
-      if (filterStatus !== "all" && report.status !== filterStatus) return false;
-
-      return true;
-    });
-  }, [reports, searchTerm, filterStatus]);
+  const filteredReports = useSearchAndFilter(reports, {
+    searchTerm,
+    searchFields: REPORT_SEARCH_FIELDS,
+    filterStatus,
+    matchesFilter: matchesReportFilter
+  });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className="section-stack">
       {/* Header card with summary & actions */}
       <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
+        <div className="flex-between mb-125">
           <div>
             <h2 className="card-title">
               <FileSpreadsheet size={20} color="var(--accent-purple)" />
@@ -116,84 +118,40 @@ export function ReportsPanel() {
           <button
             className="btn btn-secondary btn-sm"
             onClick={handleRefresh}
-            disabled={isRefreshing}
+            disabled={refreshAction.isPending}
           >
-            <RotateCw size={14} className={isRefreshing ? "spinner" : ""} />
+            <RotateCw size={14} className={refreshAction.isPending ? "spinner" : ""} />
             Atualizar
           </button>
         </div>
 
         {/* Quick status summary chips */}
-        <div style={{ display: "flex", gap: "0.65rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
-          <div
-            style={{
-              padding: "0.4rem 0.85rem",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: "var(--bg-card-subtle)",
-              border: "1px solid var(--border-subtle)",
-              fontSize: "0.82rem"
-            }}
-          >
+        <div className="flex-row-wrap gap-065 mb-125">
+          <div className="chip">
             Total: <strong>{reports.length}</strong>
           </div>
-          <div
-            style={{
-              padding: "0.4rem 0.85rem",
-              borderRadius: "var(--radius-md)",
-              backgroundColor: "var(--brand-primary-bg)",
-              border: "1px solid var(--brand-primary-border)",
-              color: "var(--brand-primary)",
-              fontSize: "0.82rem"
-            }}
-          >
+          <div className="chip chip-success">
             Enviados: <strong>{sentCount}</strong>
           </div>
           {generatedCount > 0 && (
-            <div
-              style={{
-                padding: "0.4rem 0.85rem",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--accent-blue-bg)",
-                border: "1px solid var(--accent-blue-border)",
-                color: "var(--accent-blue)",
-                fontSize: "0.82rem"
-              }}
-            >
+            <div className="chip chip-info">
               Gerados: <strong>{generatedCount}</strong>
             </div>
           )}
           {pendingCount > 0 && (
-            <div
-              style={{
-                padding: "0.4rem 0.85rem",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--accent-amber-bg)",
-                border: "1px solid var(--accent-amber-border)",
-                color: "var(--accent-amber)",
-                fontSize: "0.82rem"
-              }}
-            >
+            <div className="chip chip-warning">
               Pendentes: <strong>{pendingCount}</strong>
             </div>
           )}
           {errorCount > 0 && (
-            <div
-              style={{
-                padding: "0.4rem 0.85rem",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--accent-rose-bg)",
-                border: "1px solid var(--accent-rose-border)",
-                color: "var(--accent-rose)",
-                fontSize: "0.82rem"
-              }}
-            >
+            <div className="chip chip-error">
               Erros: <strong>{errorCount}</strong>
             </div>
           )}
         </div>
 
         {/* Search & Status Filter */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div className="filter-row">
           <div className="search-input-wrapper">
             <Search size={16} className="search-icon" />
             <input
@@ -205,7 +163,7 @@ export function ReportsPanel() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div className="flex-row gap-050">
             <select
               className="select-filter"
               value={filterStatus}
@@ -242,10 +200,10 @@ export function ReportsPanel() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th style={{ width: "26%" }}>Relatório</th>
-                <th style={{ width: "18%" }}>Data de Criação</th>
-                <th style={{ width: "16%" }}>Status</th>
-                <th style={{ width: "40%" }}>Caminho do Arquivo</th>
+                <th className="col-26">Relatório</th>
+                <th className="col-18">Data de Criação</th>
+                <th className="col-16">Status</th>
+                <th className="col-40">Caminho do Arquivo</th>
               </tr>
             </thead>
             <tbody>
@@ -253,20 +211,13 @@ export function ReportsPanel() {
                 <tr key={report.id}>
                   {/* Name */}
                   <td>
-                    <div style={{ display: "flex", alignItems: "center", gap: "0.6rem" }}>
-                      <div
-                        style={{
-                          padding: "0.35rem",
-                          borderRadius: "var(--radius-sm)",
-                          backgroundColor: "var(--accent-purple-bg)",
-                          color: "var(--accent-purple)"
-                        }}
-                      >
+                    <div className="flex-row gap-060">
+                      <div className="icon-chip icon-chip-purple">
                         <FileSpreadsheet size={16} />
                       </div>
                       <div>
-                        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{report.name}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        <div className="cell-title">{report.name}</div>
+                        <div className="cell-subtext">
                           ID: #{report.id}
                         </div>
                       </div>
@@ -275,8 +226,8 @@ export function ReportsPanel() {
 
                   {/* Creation Date */}
                   <td>
-                    <div style={{ fontWeight: 600 }}>{formatDateTime(report.createdAt)}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                    <div className="font-semibold">{formatDateTime(report.createdAt)}</div>
+                    <div className="cell-subtext">
                       {formatRelativeTime(report.createdAt)}
                     </div>
                   </td>
@@ -288,37 +239,18 @@ export function ReportsPanel() {
 
                   {/* File Path + Copy Action */}
                   <td>
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: "0.5rem",
-                        backgroundColor: "var(--bg-card-subtle)",
-                        padding: "0.35rem 0.65rem",
-                        borderRadius: "var(--radius-md)",
-                        border: "1px solid var(--border-subtle)"
-                      }}
-                    >
+                    <div className="filepath-row">
                       <span
-                        style={{
-                          fontFamily: "var(--font-mono)",
-                          fontSize: "0.78rem",
-                          color: "var(--text-secondary)",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap"
-                        }}
+                        className="font-mono fs-078 text-secondary text-ellipsis"
                         title={report.filePath}
                       >
                         {report.filePath}
                       </span>
 
                       <button
-                        className="btn-icon"
+                        className="btn-icon btn-icon-xxs"
                         onClick={() => handleCopyPath(report.filePath, report.id)}
                         title="Copiar caminho completo do arquivo"
-                        style={{ width: "26px", height: "26px", flexShrink: 0 }}
                       >
                         {copiedId === report.id ? (
                           <Check size={13} color="var(--brand-primary)" />

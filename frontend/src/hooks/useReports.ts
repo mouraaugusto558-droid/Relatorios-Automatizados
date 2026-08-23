@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { apiGet } from "../api/client";
 
 export interface Report {
   id: number;
@@ -12,8 +13,7 @@ export function useReports(): { reports: Report[]; refresh: () => Promise<void> 
   const [reports, setReports] = useState<Report[]>([]);
 
   const refresh = useCallback(async () => {
-    const response = await fetch("/api/reports");
-    setReports((await response.json()) as Report[]);
+    setReports(await apiGet<Report[]>("/api/reports"));
   }, []);
 
   useEffect(() => {

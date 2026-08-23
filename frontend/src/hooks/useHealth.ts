@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { apiGet } from "../api/client";
 
 export interface HealthStatus {
   status: "ok" | "degraded" | "error";
@@ -18,14 +19,9 @@ export function useHealth() {
   const checkHealth = useCallback(async () => {
     setIsChecking(true);
     try {
-      const res = await fetch("/api/health");
-      if (res.ok) {
-        const data = (await res.json()) as HealthStatus;
-        setHealth(data);
-        setIsOnline(true);
-      } else {
-        setIsOnline(false);
-      }
+      const data = await apiGet<HealthStatus>("/api/health");
+      setHealth(data);
+      setIsOnline(true);
     } catch {
       setIsOnline(false);
     } finally {

@@ -10,8 +10,8 @@ import {
   Server
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
-import { useWhatsAppStatus } from "../hooks/useWhatsAppStatus";
-import { useHealth } from "../hooks/useHealth";
+import { useAppData } from "../context/AppDataContext";
+import { StatusPill } from "./StatusPill";
 import { formatPhoneNumber } from "../utils/formatDateTime";
 
 export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports";
@@ -34,51 +34,47 @@ export function Navbar({
   isRefreshing = false
 }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
-  const whatsapp = useWhatsAppStatus();
-  const { health, isOnline } = useHealth();
+  const { whatsapp, health, isOnline } = useAppData();
 
   const getWhatsAppPill = () => {
     if (!whatsapp) {
       return (
-        <span className="pill pill-neutral">
-          <span className="status-dot" />
+        <StatusPill tone="neutral" dot>
           Verificando WhatsApp...
-        </span>
+        </StatusPill>
       );
     }
 
     switch (whatsapp.status) {
       case "connected":
         return (
-          <span
-            className="pill pill-success"
+          <StatusPill
+            tone="success"
+            dot
+            pulse
             title={`Conectado: ${formatPhoneNumber(whatsapp.phoneNumber)}`}
           >
-            <span className="status-dot status-dot-pulse" />
             WhatsApp Conectado
-          </span>
+          </StatusPill>
         );
       case "connecting":
         return (
-          <span className="pill pill-warning">
-            <span className="status-dot status-dot-pulse" />
+          <StatusPill tone="warning" dot pulse>
             Conectando WhatsApp...
-          </span>
+          </StatusPill>
         );
       case "qr":
         return (
-          <span className="pill pill-warning">
-            <span className="status-dot status-dot-pulse" />
+          <StatusPill tone="warning" dot pulse>
             Aguardando QR Code
-          </span>
+          </StatusPill>
         );
       case "disconnected":
       default:
         return (
-          <span className="pill pill-error">
-            <span className="status-dot" />
+          <StatusPill tone="error" dot>
             WhatsApp Desconectado
-          </span>
+          </StatusPill>
         );
     }
   };
@@ -93,7 +89,7 @@ export function Navbar({
           <div className="brand-info">
             <div className="brand-title">
               Painel de Operações
-              <span className="pill pill-info" style={{ fontSize: "0.68rem", padding: "0.15rem 0.5rem" }}>
+              <span className="pill pill-info pill-sm">
                 v1.0
               </span>
             </div>
@@ -156,7 +152,7 @@ export function Navbar({
           <MessageSquare size={17} />
           <span>WhatsApp</span>
           {whatsapp?.status === "qr" && (
-            <span className="tab-counter" style={{ color: "var(--accent-amber)" }}>
+            <span className="tab-counter tab-counter-warning">
               QR
             </span>
           )}

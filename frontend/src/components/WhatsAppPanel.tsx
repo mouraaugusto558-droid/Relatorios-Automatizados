@@ -11,8 +11,10 @@ import {
   ExternalLink,
   ShieldCheck
 } from "lucide-react";
-import { useWhatsAppStatus } from "../hooks/useWhatsAppStatus";
-import { useToast } from "../context/ToastContext";
+import { useAppData } from "../context/AppDataContext";
+import { useApiAction } from "../hooks/useApiAction";
+import { apiPost, ApiError } from "../api/client";
+import { ConfirmModal } from "./ConfirmModal";
 import {
   formatDateTime,
   formatPhoneNumber,
@@ -20,105 +22,104 @@ import {
 } from "../utils/formatDateTime";
 
 export function WhatsAppPanel() {
-  const status = useWhatsAppStatus();
-  const { success, error: toastError, info } = useToast();
+  const { whatsapp: status } = useAppData();
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
 
-  const [isPending, setIsPending] = useState(false);
-  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const connectAction = useApiAction(() => apiPost("/api/whatsapp/connect"), {
+    pending: () => ({
+      title: "Iniciando conexão...",
+      message: "Aguarde enquanto o Baileys inicia a sessão."
+    }),
+    success: () => ({
+      title: "Conexão iniciada",
+      message: "Verifique o QR Code ou status abaixo."
+    }),
+    error: (err) =>
+      err instanceof ApiError
+        ? { title: "Falha na conexão", message: `Status retornado: ${err.status}` }
+        : { title: "Erro de comunicação", message: "Não foi possível conectar ao backend." }
+  });
 
-  const handleConnect = async () => {
-    setIsPending(true);
-    setPendingAction("connect");
-    info("Iniciando conexão...", "Aguarde enquanto o Baileys inicia a sessão.");
-    try {
-      const res = await fetch("/api/whatsapp/connect", { method: "POST" });
-      if (res.ok) {
-        success("Conexão iniciada", "Verifique o QR Code ou status abaixo.");
-      } else {
-        toastError("Falha na conexão", `Status retornado: ${res.status}`);
-      }
-    } catch {
-      toastError("Erro de comunicação", "Não foi possível conectar ao backend.");
-    } finally {
-      setIsPending(false);
-      setPendingAction(null);
+  const disconnectAction = useApiAction(() => apiPost("/api/whatsapp/disconnect"), {
+    success: () => ({
+      title: "Desconectado",
+      message: "A sessão do WhatsApp foi encerrada com sucesso."
+    }),
+    error: (err) =>
+      err instanceof ApiError
+        ? { title: "Falha ao desconectar", message: `Status retornado: ${err.status}` }
+        : { title: "Erro de comunicação", message: "Não foi possível desconectar." }
+  });
+
+  const reconnectAction = useApiAction(
+    async () => {
+      await apiPost("/api/whatsapp/disconnect");
+      return apiPost("/api/whatsapp/connect");
+    },
+    {
+      pending: () => ({
+        title: "Reiniciando sessão...",
+        message: "Encerrando e restabelecendo conexão..."
+      }),
+      success: () => ({
+        title: "Sessão reiniciada",
+        message: "Aguarde a atualização de status."
+      }),
+      error: (err) =>
+        err instanceof ApiError
+          ? { title: "Falha ao reconectar", message: `Status retornado: ${err.status}` }
+          : { title: "Erro de comunicação", message: "Não foi possível reconectar." }
     }
+  );
+
+  const handleConnect = () => {
+    void connectAction.run();
   };
 
-  const handleDisconnect = async () => {
-    if (!window.confirm("Deseja realmente desconectar a sessão do WhatsApp?")) {
-      return;
-    }
-
-    setIsPending(true);
-    setPendingAction("disconnect");
-    try {
-      const res = await fetch("/api/whatsapp/disconnect", { method: "POST" });
-      if (res.ok) {
-        success("Desconectado", "A sessão do WhatsApp foi encerrada com sucesso.");
-      } else {
-        toastError("Falha ao desconectar", `Status retornado: ${res.status}`);
-      }
-    } catch {
-      toastError("Erro de comunicação", "Não foi possível desconectar.");
-    } finally {
-      setIsPending(false);
-      setPendingAction(null);
-    }
+  const handleDisconnect = () => {
+    setShowDisconnectConfirm(true);
   };
 
-  const handleReconnect = async () => {
-    setIsPending(true);
-    setPendingAction("reconnect");
-    info("Reiniciando sessão...", "Encerrando e restabelecendo conexão...");
-    try {
-      await fetch("/api/whatsapp/disconnect", { method: "POST" });
-      const res = await fetch("/api/whatsapp/connect", { method: "POST" });
-      if (res.ok) {
-        success("Sessão reiniciada", "Aguarde a atualização de status.");
-      } else {
-        toastError("Falha ao reconectar", `Status retornado: ${res.status}`);
-      }
-    } catch {
-      toastError("Erro de comunicação", "Não foi possível reconectar.");
-    } finally {
-      setIsPending(false);
-      setPendingAction(null);
-    }
+  const handleConfirmDisconnect = () => {
+    setShowDisconnectConfirm(false);
+    void disconnectAction.run();
   };
+
+  const handleReconnect = () => {
+    void reconnectAction.run();
+  };
+
+  const isPending = connectAction.isPending || disconnectAction.isPending || reconnectAction.isPending;
+  const pendingAction = connectAction.isPending
+    ? "connect"
+    : disconnectAction.isPending
+    ? "disconnect"
+    : reconnectAction.isPending
+    ? "reconnect"
+    : null;
 
   const currentStatus = status?.status ?? "disconnected";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem", maxWidth: "860px", margin: "0 auto" }}>
+    <div className="section-stack wa-panel">
       {/* Header Info */}
       <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.85rem" }}>
+        <div className="flex-between">
+          <div className="flex-row gap-085">
             <div
-              style={{
-                width: "48px",
-                height: "48px",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: currentStatus === "connected" ? "var(--brand-primary-bg)" : "var(--bg-card-subtle)",
-                color: currentStatus === "connected" ? "var(--brand-primary)" : "var(--text-secondary)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                border: "1px solid var(--border-subtle)"
-              }}
+              className={`wa-header-icon ${currentStatus === "connected" ? "wa-header-icon-active" : "wa-header-icon-inactive"}`}
             >
               <MessageSquare size={24} />
             </div>
             <div>
-              <h2 style={{ fontSize: "1.25rem", fontWeight: 700 }}>Gerenciador de Conexão WhatsApp</h2>
-              <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+              <h2 className="wa-title">Gerenciador de Conexão WhatsApp</h2>
+              <p className="wa-subtitle">
                 Controle a sessão do Baileys para envio automatizado de relatórios e mensagens.
               </p>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div className="flex-row gap-050">
             <span className="pill pill-info" title="Eventos recebidos em tempo real via Server-Sent Events (SSE)">
               <Radio size={12} className="status-dot-pulse" />
               SSE Ativo
@@ -129,58 +130,28 @@ export function WhatsAppPanel() {
 
       {/* Main Connection Status Card */}
       {currentStatus === "connected" && (
-        <div className="card" style={{ borderColor: "var(--brand-primary-border)" }}>
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
-              padding: "2rem 1rem",
-              gap: "1.25rem"
-            }}
-          >
-            <div
-              style={{
-                width: "72px",
-                height: "72px",
-                borderRadius: "50%",
-                backgroundColor: "var(--brand-primary-bg)",
-                color: "var(--brand-primary)",
-                border: "2px solid var(--brand-primary-border)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 0 20px rgba(16, 185, 129, 0.25)"
-              }}
-            >
+        <div className="card card-border-success">
+          <div className="wa-connected-content">
+            <div className="wa-status-icon-success">
               <ShieldCheck size={40} />
             </div>
 
             <div>
-              <div style={{ display: "inline-flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.35rem" }}>
-                <span className="pill pill-success" style={{ fontSize: "0.85rem", padding: "0.35rem 0.85rem" }}>
+              <div className="wa-badge-wrap">
+                <span className="pill pill-success pill-lg">
                   <CheckCircle2 size={15} />
                   Sessão Ativa e Pronta
                 </span>
               </div>
-              <h3 style={{ fontSize: "1.6rem", fontWeight: 800, marginTop: "0.5rem", letterSpacing: "-0.01em" }}>
+              <h3 className="wa-phone-heading">
                 {formatPhoneNumber(status?.phoneNumber)}
               </h3>
-              <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: "0.25rem" }}>
+              <p className="wa-muted-note">
                 Último evento recebido: {formatDateTime(status?.lastEventAt)} ({formatRelativeTime(status?.lastEventAt)})
               </p>
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "0.75rem",
-                marginTop: "0.5rem",
-                flexWrap: "wrap",
-                justifyContent: "center"
-              }}
-            >
+            <div className="flex-row-wrap justify-center gap-075 mt-050">
               <button
                 className="btn btn-secondary"
                 onClick={handleReconnect}
@@ -204,18 +175,18 @@ export function WhatsAppPanel() {
       )}
 
       {currentStatus === "qr" && (
-        <div className="card qr-scanner-card" style={{ borderColor: "var(--accent-amber-border)" }}>
-          <div style={{ marginBottom: "1rem" }}>
-            <span className="pill pill-warning" style={{ fontSize: "0.85rem", padding: "0.4rem 0.9rem" }}>
+        <div className="card qr-scanner-card card-border-warning">
+          <div className="mb-100">
+            <span className="pill pill-warning pill-xl">
               <QrCode size={16} />
               Aguardando Leitura do QR Code
             </span>
           </div>
 
-          <h3 style={{ fontSize: "1.3rem", fontWeight: 700, marginBottom: "0.25rem" }}>
+          <h3 className="wa-qr-heading">
             Conecte seu WhatsApp
           </h3>
-          <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", maxWidth: "460px", marginBottom: "1.5rem" }}>
+          <p className="wa-qr-description">
             Aponte a câmera do seu celular com o WhatsApp aberto para escanear o código abaixo.
           </p>
 
@@ -228,24 +199,9 @@ export function WhatsAppPanel() {
               />
             </div>
           ) : (
-            <div
-              style={{
-                width: "240px",
-                height: "240px",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: "var(--bg-card-subtle)",
-                borderRadius: "var(--radius-lg)",
-                border: "1px dashed var(--border-strong)",
-                marginBottom: "1.5rem",
-                gap: "0.5rem",
-                color: "var(--text-muted)"
-              }}
-            >
+            <div className="wa-qr-placeholder">
               <RotateCw size={30} className="spinner" />
-              <span style={{ fontSize: "0.85rem" }}>Gerando QR Code...</span>
+              <span className="fs-085">Gerando QR Code...</span>
             </div>
           )}
 
@@ -269,7 +225,7 @@ export function WhatsAppPanel() {
             </div>
           </div>
 
-          <div style={{ display: "flex", gap: "0.75rem" }}>
+          <div className="flex-row gap-075">
             <button
               className="btn btn-secondary"
               onClick={handleReconnect}
@@ -292,27 +248,16 @@ export function WhatsAppPanel() {
 
       {currentStatus === "connecting" && (
         <div className="card">
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "3.5rem 1.5rem",
-              textAlign: "center",
-              gap: "1rem"
-            }}
-          >
+          <div className="wa-empty-content gap-100">
             <RotateCw size={44} className="spinner" color="var(--brand-primary)" />
-            <h3 style={{ fontSize: "1.2rem", fontWeight: 700 }}>Estabelecendo Conexão...</h3>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", maxWidth: "420px" }}>
+            <h3 className="wa-connecting-heading">Estabelecendo Conexão...</h3>
+            <p className="wa-connecting-description">
               Iniciando motor do WhatsApp e sincronizando chaves criptográficas. Isso pode levar alguns segundos.
             </p>
             <button
-              className="btn btn-secondary btn-sm"
+              className="btn btn-secondary btn-sm mt-050"
               onClick={handleDisconnect}
               disabled={isPending}
-              style={{ marginTop: "0.5rem" }}
             >
               Cancelar
             </button>
@@ -322,51 +267,38 @@ export function WhatsAppPanel() {
 
       {currentStatus === "disconnected" && (
         <div className="card">
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              padding: "3.5rem 1.5rem",
-              textAlign: "center",
-              gap: "1.2rem"
-            }}
-          >
-            <div
-              style={{
-                width: "64px",
-                height: "64px",
-                borderRadius: "50%",
-                backgroundColor: "var(--bg-card-subtle)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                color: "var(--text-muted)",
-                border: "1px solid var(--border-subtle)"
-              }}
-            >
+          <div className="wa-empty-content gap-120">
+            <div className="wa-status-icon-neutral">
               <Smartphone size={32} />
             </div>
 
             <div>
-              <h3 style={{ fontSize: "1.25rem", fontWeight: 700 }}>WhatsApp Desconectado</h3>
-              <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", maxWidth: "440px", marginTop: "0.3rem" }}>
+              <h3 className="wa-title">WhatsApp Desconectado</h3>
+              <p className="wa-disconnected-description">
                 Inicie uma sessão para que o sistema possa realizar o envio de relatórios e mensagens automáticas aos destinatários.
               </p>
             </div>
 
             <button
-              className="btn btn-primary"
+              className="btn btn-primary wa-connect-btn"
               onClick={handleConnect}
               disabled={isPending}
-              style={{ padding: "0.75rem 1.75rem", fontSize: "0.95rem" }}
             >
               <Power size={17} />
               {pendingAction === "connect" ? "Iniciando..." : "Conectar WhatsApp"}
             </button>
           </div>
         </div>
+      )}
+
+      {showDisconnectConfirm && (
+        <ConfirmModal
+          title="Desconectar WhatsApp"
+          message="Deseja realmente desconectar a sessão do WhatsApp?"
+          confirmLabel="Desconectar"
+          onConfirm={handleConfirmDisconnect}
+          onCancel={() => setShowDisconnectConfirm(false)}
+        />
       )}
     </div>
   );

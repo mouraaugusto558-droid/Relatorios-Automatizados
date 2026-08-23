@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { apiGet } from "../api/client";
 
 export interface JobRun {
   id: number;
@@ -26,8 +27,7 @@ export function useJobs(): { jobs: Job[]; refresh: () => Promise<void> } {
   const [jobs, setJobs] = useState<Job[]>([]);
 
   const refresh = useCallback(async () => {
-    const response = await fetch("/api/jobs");
-    setJobs((await response.json()) as Job[]);
+    setJobs(await apiGet<Job[]>("/api/jobs"));
   }, []);
 
   useEffect(() => {

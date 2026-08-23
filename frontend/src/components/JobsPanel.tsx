@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import {
   CalendarClock,
   Play,
@@ -7,12 +7,15 @@ import {
   CheckCircle2,
   AlertCircle,
   RotateCw,
-  Clock,
   Power
 } from "lucide-react";
-import { useJobs, type Job } from "../hooks/useJobs";
-import { useToast } from "../context/ToastContext";
+import type { Job } from "../hooks/useJobs";
+import { useAppData } from "../context/AppDataContext";
+import { useApiAction } from "../hooks/useApiAction";
+import { useSearchAndFilter } from "../hooks/useSearchAndFilter";
+import { apiPost, ApiError } from "../api/client";
 import { JobHistoryModal } from "./JobHistoryModal";
+import { StatusPill } from "./StatusPill";
 import {
   formatDateTime,
   formatRelativeTime,
@@ -22,77 +25,86 @@ import {
 
 type FilterStatus = "all" | "active" | "disabled" | "running";
 
+const JOB_SEARCH_FIELDS: readonly (keyof Job)[] = ["name", "id"];
+
+function matchesJobFilter(job: Job, filterStatus: FilterStatus): boolean {
+  if (filterStatus === "active") return job.enabled && !job.isRunning;
+  if (filterStatus === "disabled") return !job.enabled;
+  if (filterStatus === "running") return job.isRunning;
+  return true;
+}
+
 export function JobsPanel() {
-  const { jobs, refresh } = useJobs();
-  const { success, error: toastError, info } = useToast();
+  const { jobs, refreshJobs } = useAppData();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
   const [selectedJobForHistory, setSelectedJobForHistory] = useState<Job | null>(null);
 
-  const filteredJobs = useMemo(() => {
-    return jobs.filter((job) => {
-      // Search match
-      const matchesSearch =
-        job.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        job.id.toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredJobs = useSearchAndFilter(jobs, {
+    searchTerm,
+    searchFields: JOB_SEARCH_FIELDS,
+    filterStatus,
+    matchesFilter: matchesJobFilter
+  });
 
-      if (!matchesSearch) return false;
-
-      // Status filter
-      if (filterStatus === "active") return job.enabled && !job.isRunning;
-      if (filterStatus === "disabled") return !job.enabled;
-      if (filterStatus === "running") return job.isRunning;
-      return true;
-    });
-  }, [jobs, searchTerm, filterStatus]);
+  const runJobAction = useApiAction(
+    async (job: Job) => {
+      const result = await apiPost<{ ok: boolean }>(`/api/jobs/${job.id}/run`);
+      await refreshJobs();
+      return result;
+    },
+    {
+      pending: (job) => ({
+        title: "Disparando job...",
+        message: `Iniciando a execução do job "${job.name}".`
+      }),
+      success: (_result, job) => ({
+        title: "Job finalizado!",
+        message: `A execução de "${job.name}" foi concluída.`
+      }),
+      error: (err) =>
+        err instanceof ApiError
+          ? { title: "Erro ao rodar job", message: `O backend retornou status: ${err.status}` }
+          : { title: "Falha na requisição", message: "Não foi possível conectar ao servidor." }
+    }
+  );
 
   const handleRunNow = async (job: Job) => {
     setRunningJobId(job.id);
-    info("Disparando job...", `Iniciando a execução do job "${job.name}".`);
-    try {
-      const res = await fetch(`/api/jobs/${job.id}/run`, { method: "POST" });
-      if (res.ok) {
-        success("Job finalizado!", `A execução de "${job.name}" foi concluída.`);
-        await refresh();
-      } else {
-        toastError("Erro ao rodar job", `O backend retornou status: ${res.status}`);
-      }
-    } catch {
-      toastError("Falha na requisição", "Não foi possível conectar ao servidor.");
-    } finally {
-      setRunningJobId(null);
-    }
+    await runJobAction.run(job);
+    setRunningJobId(null);
   };
 
-  const handleToggle = async (job: Job) => {
-    const nextState = !job.enabled;
-    try {
-      const res = await fetch(`/api/jobs/${job.id}/toggle`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled: nextState })
-      });
-      if (res.ok) {
-        success(
-          nextState ? "Job Ativado" : "Job Desativado",
-          `O job "${job.name}" está agora ${nextState ? "ativo" : "desativado"}.`
-        );
-        await refresh();
-      } else {
-        toastError("Falha ao alterar status", `Status retornado: ${res.status}`);
-      }
-    } catch {
-      toastError("Erro de comunicação", "Não foi possível atualizar o agendamento.");
+  const toggleJobAction = useApiAction(
+    async (job: Job) => {
+      const nextState = !job.enabled;
+      await apiPost<Job>(`/api/jobs/${job.id}/toggle`, { enabled: nextState });
+      await refreshJobs();
+      return nextState;
+    },
+    {
+      success: (nextState, job) => ({
+        title: nextState ? "Job Ativado" : "Job Desativado",
+        message: `O job "${job.name}" está agora ${nextState ? "ativo" : "desativado"}.`
+      }),
+      error: (err) =>
+        err instanceof ApiError
+          ? { title: "Falha ao alterar status", message: `Status retornado: ${err.status}` }
+          : { title: "Erro de comunicação", message: "Não foi possível atualizar o agendamento." }
     }
+  );
+
+  const handleToggle = (job: Job) => {
+    void toggleJobAction.run(job);
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className="section-stack">
       {/* Header card with filters */}
       <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem", marginBottom: "1.25rem" }}>
+        <div className="flex-between mb-125">
           <div>
             <h2 className="card-title">
               <CalendarClock size={20} color="var(--accent-blue)" />
@@ -103,7 +115,7 @@ export function JobsPanel() {
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div className="flex-row gap-050">
             <span className="pill pill-neutral">
               {jobs.length} jobs configurados
             </span>
@@ -111,7 +123,7 @@ export function JobsPanel() {
         </div>
 
         {/* Filters and Search Bar */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+        <div className="filter-row">
           <div className="search-input-wrapper">
             <Search size={16} className="search-icon" />
             <input
@@ -123,7 +135,7 @@ export function JobsPanel() {
             />
           </div>
 
-          <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+          <div className="flex-row gap-050">
             <select
               className="select-filter"
               value={filterStatus}
@@ -159,12 +171,12 @@ export function JobsPanel() {
           <table className="custom-table">
             <thead>
               <tr>
-                <th style={{ width: "24%" }}>Nome do Job</th>
-                <th style={{ width: "12%" }}>Status</th>
-                <th style={{ width: "20%" }}>Frequência (Cron)</th>
-                <th style={{ width: "18%" }}>Próxima Execução</th>
-                <th style={{ width: "14%" }}>Última Execução</th>
-                <th style={{ width: "12%", textAlign: "right" }}>Ações</th>
+                <th className="col-24">Nome do Job</th>
+                <th className="col-12">Status</th>
+                <th className="col-20">Frequência (Cron)</th>
+                <th className="col-18">Próxima Execução</th>
+                <th className="col-14">Última Execução</th>
+                <th className="col-12 text-right">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -172,8 +184,8 @@ export function JobsPanel() {
                 <tr key={job.id}>
                   {/* Job Name */}
                   <td>
-                    <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{job.name}</div>
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                    <div className="cell-title">{job.name}</div>
+                    <div className="text-mono-muted">
                       id: {job.id}
                     </div>
                   </td>
@@ -181,35 +193,24 @@ export function JobsPanel() {
                   {/* Status Badge */}
                   <td>
                     {job.isRunning ? (
-                      <span className="pill pill-warning">
-                        <RotateCw size={12} className="spinner" />
+                      <StatusPill tone="warning" icon={<RotateCw size={12} className="spinner" />}>
                         Executando
-                      </span>
+                      </StatusPill>
                     ) : job.enabled ? (
-                      <span className="pill pill-success">
-                        <span className="status-dot" />
+                      <StatusPill tone="success" dot>
                         Ativo
-                      </span>
+                      </StatusPill>
                     ) : (
-                      <span className="pill pill-neutral">
-                        <Power size={12} />
+                      <StatusPill tone="neutral" icon={<Power size={12} />}>
                         Desativado
-                      </span>
+                      </StatusPill>
                     )}
                   </td>
 
                   {/* Cron Frequency */}
                   <td>
-                    <div style={{ fontWeight: 500 }}>{humanizeCron(job.cronExpression)}</div>
-                    <div
-                      style={{
-                        display: "inline-block",
-                        fontSize: "0.72rem",
-                        fontFamily: "var(--font-mono)",
-                        color: "var(--text-muted)",
-                        marginTop: "0.15rem"
-                      }}
-                    >
+                    <div className="font-medium">{humanizeCron(job.cronExpression)}</div>
+                    <div className="cron-expression mt-015">
                       {job.cronExpression}
                     </div>
                   </td>
@@ -218,13 +219,13 @@ export function JobsPanel() {
                   <td>
                     {job.enabled && job.nextRun ? (
                       <div>
-                        <div style={{ fontWeight: 600 }}>{formatDateTime(job.nextRun)}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--brand-primary)" }}>
+                        <div className="font-semibold">{formatDateTime(job.nextRun)}</div>
+                        <div className="fs-075 text-brand">
                           {formatRelativeTime(job.nextRun)}
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>—</span>
+                      <span className="text-muted fs-085">—</span>
                     )}
                   </td>
 
@@ -232,27 +233,27 @@ export function JobsPanel() {
                   <td>
                     {job.lastRun ? (
                       <div>
-                        <div style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+                        <div className="flex-row gap-035">
                           {job.lastRun.status === "success" ? (
                             <CheckCircle2 size={14} color="var(--brand-primary)" />
                           ) : (
                             <AlertCircle size={14} color="var(--accent-rose)" />
                           )}
-                          <span style={{ fontSize: "0.82rem", fontWeight: 600 }}>
+                          <span className="fs-082 font-semibold">
                             {job.lastRun.status === "success" ? "Sucesso" : "Erro"}
                           </span>
                           {job.lastRun.durationMs !== null && (
-                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
+                            <span className="fs-075 text-muted font-mono">
                               ({formatDuration(job.lastRun.durationMs)})
                             </span>
                           )}
                         </div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+                        <div className="fs-075 text-muted mt-015">
                           {formatRelativeTime(job.lastRun.startedAt)}
                         </div>
                       </div>
                     ) : (
-                      <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                      <span className="text-muted fs-082">
                         Nunca executado
                       </span>
                     )}
@@ -260,7 +261,7 @@ export function JobsPanel() {
 
                   {/* Actions */}
                   <td>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.45rem" }}>
+                    <div className="flex-row justify-end gap-045">
                       {/* Toggle switch */}
                       <label
                         className="toggle-switch"
@@ -292,10 +293,9 @@ export function JobsPanel() {
 
                       {/* History Button */}
                       <button
-                        className="btn-icon"
+                        className="btn-icon btn-icon-sm"
                         onClick={() => setSelectedJobForHistory(job)}
                         title="Ver histórico de execuções"
-                        style={{ width: "32px", height: "32px" }}
                       >
                         <History size={15} />
                       </button>

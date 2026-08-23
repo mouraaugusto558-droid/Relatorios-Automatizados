@@ -1,21 +1,19 @@
 import { useState, useCallback } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider, useToast } from "./context/ToastContext";
+import { AppDataProvider, useAppData } from "./context/AppDataContext";
 import { Navbar, type TabId } from "./components/Navbar";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { WhatsAppPanel } from "./components/WhatsAppPanel";
 import { JobsPanel } from "./components/JobsPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
 import { ToastContainer } from "./components/ToastContainer";
-import { useJobs } from "./hooks/useJobs";
 import { useReports } from "./hooks/useReports";
-import { useHealth } from "./hooks/useHealth";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
-  const { jobs, refresh: refreshJobs } = useJobs();
+  const { jobs, refreshJobs, refreshHealth } = useAppData();
   const { reports, refresh: refreshReports } = useReports();
-  const { refreshHealth } = useHealth();
   const { success } = useToast();
 
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
@@ -57,7 +55,9 @@ export function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <MainApp />
+        <AppDataProvider>
+          <MainApp />
+        </AppDataProvider>
       </ToastProvider>
     </ThemeProvider>
   );

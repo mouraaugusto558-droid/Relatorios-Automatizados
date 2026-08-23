@@ -978,6 +978,188 @@ input:checked + .toggle-slider:before {
   to { transform: rotate(360deg); }
 }
 
+/* ==========================================================================
+   Utility Classes (Fase 4 — migração de estilos inline para classes)
+   ========================================================================== */
+
+/* Flex / layout primitives */
+.section-stack { display: flex; flex-direction: column; gap: 1.5rem; }
+.flex-between { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+.flex-start-between { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; }
+.filter-row { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; }
+.flex-row { display: flex; align-items: center; }
+.flex-row-wrap { display: flex; align-items: center; flex-wrap: wrap; }
+.flex-col { display: flex; flex-direction: column; }
+.flex-start { display: flex; align-items: flex-start; }
+.justify-center { justify-content: center; }
+.justify-end { justify-content: flex-end; }
+.flex-1 { flex: 1; }
+.flex-1-min0 { flex: 1; min-width: 0; }
+.flex-shrink-0 { flex-shrink: 0; }
+.w-full { width: 100%; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.overflow-y-auto { overflow-y: auto; }
+.word-break-all { word-break: break-all; }
+.text-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Spacing scale (gap / margin) — reaproveita os valores literais já usados
+   nos componentes antes da migração, apenas trocando inline por classe. */
+.gap-015 { gap: 0.15rem; }
+.gap-020 { gap: 0.2rem; }
+.gap-035 { gap: 0.35rem; }
+.gap-040 { gap: 0.4rem; }
+.gap-045 { gap: 0.45rem; }
+.gap-050 { gap: 0.5rem; }
+.gap-060 { gap: 0.6rem; }
+.gap-065 { gap: 0.65rem; }
+.gap-075 { gap: 0.75rem; }
+.gap-085 { gap: 0.85rem; }
+.gap-100 { gap: 1rem; }
+.gap-120 { gap: 1.2rem; }
+.gap-125 { gap: 1.25rem; }
+.gap-150 { gap: 1.5rem; }
+
+.mt-015 { margin-top: 0.15rem; }
+.mt-020 { margin-top: 0.2rem; }
+.mt-025 { margin-top: 0.25rem; }
+.mt-030 { margin-top: 0.3rem; }
+.mt-035 { margin-top: 0.35rem; }
+.mt-050 { margin-top: 0.5rem; }
+.mb-050 { margin-bottom: 0.5rem; }
+.mb-100 { margin-bottom: 1rem; }
+.mb-125 { margin-bottom: 1.25rem; }
+.mb-150 { margin-bottom: 1.5rem; }
+
+/* Text helpers */
+.cell-title { font-weight: 700; color: var(--text-primary); }
+.cell-subtext { font-size: 0.75rem; color: var(--text-muted); }
+.text-mono-muted { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-muted); }
+.text-muted-sm { font-size: 0.82rem; color: var(--text-muted); }
+.text-sm { font-size: 0.85rem; }
+.font-medium { font-weight: 500; }
+.font-semibold { font-weight: 600; }
+.font-bold { font-weight: 700; }
+.opacity-70 { opacity: 0.7; }
+
+/* Font-size scale + text color utilities (compõem com as classes acima para
+   os casos em que só o tamanho ou só a cor muda de um trecho para outro). */
+.fs-072 { font-size: 0.72rem; }
+.fs-075 { font-size: 0.75rem; }
+.fs-078 { font-size: 0.78rem; }
+.fs-080 { font-size: 0.8rem; }
+.fs-082 { font-size: 0.82rem; }
+.fs-085 { font-size: 0.85rem; }
+.fs-088 { font-size: 0.88rem; }
+.fs-095 { font-size: 0.95rem; }
+.text-muted { color: var(--text-muted); }
+.text-secondary { color: var(--text-secondary); }
+.text-brand { color: var(--brand-primary); }
+.text-rose { color: var(--accent-rose); }
+.font-mono { font-family: var(--font-mono); }
+.inline-block { display: inline-block; }
+
+.cron-expression { display: inline-block; font-size: 0.72rem; font-family: var(--font-mono); color: var(--text-muted); }
+.filepath-row { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; background-color: var(--bg-card-subtle); padding: 0.35rem 0.65rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); }
+
+/* Table column-width helpers (larguras de <th>) */
+.col-12 { width: 12%; }
+.col-14 { width: 14%; }
+.col-16 { width: 16%; }
+.col-18 { width: 18%; }
+.col-20 { width: 20%; }
+.col-24 { width: 24%; }
+.col-26 { width: 26%; }
+.col-40 { width: 40%; }
+
+/* Chips — pequenos blocos de resumo, distintos do `.pill` (radius menor, sem peso de fonte fixo) */
+.chip { padding: 0.4rem 0.85rem; border-radius: var(--radius-md); font-size: 0.82rem; border: 1px solid var(--border-subtle); background-color: var(--bg-card-subtle); color: var(--text-primary); }
+.chip-success { background-color: var(--brand-primary-bg); border-color: var(--brand-primary-border); color: var(--brand-primary); }
+.chip-info { background-color: var(--accent-blue-bg); border-color: var(--accent-blue-border); color: var(--accent-blue); }
+.chip-warning { background-color: var(--accent-amber-bg); border-color: var(--accent-amber-border); color: var(--accent-amber); }
+.chip-error { background-color: var(--accent-rose-bg); border-color: var(--accent-rose-border); color: var(--accent-rose); }
+
+/* Icon chips (avatares pequenos com fundo colorido) */
+.icon-chip { display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); padding: 0.35rem; }
+.icon-chip-lg { padding: 0.4rem; }
+.icon-chip-blue { background-color: var(--accent-blue-bg); color: var(--accent-blue); }
+.icon-chip-purple { background-color: var(--accent-purple-bg); color: var(--accent-purple); }
+
+/* Botões-ícone em tamanhos menores que o padrão .btn-icon (36px) */
+.btn-icon-sm { width: 32px; height: 32px; }
+.btn-icon-xs { width: 28px; height: 28px; }
+.btn-icon-xxs { width: 26px; height: 26px; flex-shrink: 0; }
+
+/* Variantes de tamanho do .pill */
+.pill-sm { font-size: 0.68rem; padding: 0.15rem 0.5rem; }
+.pill-lg { font-size: 0.85rem; padding: 0.35rem 0.85rem; }
+.pill-xl { font-size: 0.85rem; padding: 0.4rem 0.9rem; }
+.tab-counter-warning { color: var(--accent-amber); }
+
+/* Variantes de modal */
+.modal-content-sm { max-width: 420px; }
+.modal-title { font-size: 1.05rem; font-weight: 700; }
+.modal-message { font-size: 0.88rem; color: var(--text-secondary); }
+
+/* StatsCard */
+.stats-card-clickable { cursor: pointer; }
+.stats-footer-row { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+.stat-link { font-weight: 600; display: inline-flex; align-items: center; gap: 0.2rem; }
+.stat-link-brand { color: var(--brand-primary); }
+.stat-link-blue { color: var(--accent-blue); }
+.stat-link-purple { color: var(--accent-purple); }
+
+/* JobHistoryModal */
+.history-title { font-size: 1.1rem; font-weight: 700; }
+.history-header-icon { padding: 0.4rem; border-radius: var(--radius-sm); background-color: var(--accent-blue-bg); color: var(--accent-blue); }
+.history-loading { display: flex; align-items: center; justify-content: center; padding: 3rem 0; gap: 0.75rem; color: var(--text-muted); }
+.history-error-card { border-color: var(--accent-rose-border); background-color: var(--accent-rose-bg); color: var(--accent-rose); }
+.history-error-message { font-size: 0.85rem; margin-top: 0.35rem; }
+.history-error-cell { color: var(--accent-rose); font-size: 0.8rem; background: var(--accent-rose-bg); padding: 0.35rem 0.6rem; border-radius: var(--radius-sm); border: 1px solid var(--accent-rose-border); font-family: var(--font-mono); max-width: 280px; word-break: break-all; }
+.history-duration { font-family: var(--font-mono); font-size: 0.82rem; }
+
+/* DashboardPanel */
+.dashboard-banner { background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%); padding: 1.5rem; }
+.dashboard-title { font-size: 1.4rem; font-weight: 800; letter-spacing: -0.02em; }
+.dashboard-subtitle { color: var(--text-secondary); font-size: 0.88rem; margin-top: 0.25rem; }
+.grid-2col-320 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; }
+.status-row-box { display: flex; align-items: flex-start; justify-content: space-between; padding: 0.85rem; border-radius: var(--radius-md); background-color: var(--bg-card-subtle); border: 1px solid var(--border-subtle); }
+.label-caption { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600; }
+.status-row-value { font-size: 0.95rem; font-weight: 700; margin-top: 0.2rem; }
+.status-row-time { font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.2rem; }
+.errors-empty-box { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; text-align: center; background-color: var(--brand-primary-bg); border-radius: var(--radius-md); border: 1px solid var(--brand-primary-border); }
+.errors-empty-title { font-weight: 700; color: var(--brand-primary); font-size: 0.95rem; }
+.errors-empty-description { font-size: 0.82rem; color: var(--text-secondary); margin-top: 0.2rem; }
+.errors-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: 260px; overflow-y: auto; }
+.error-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; padding: 0.75rem 0.95rem; border-radius: var(--radius-md); background-color: var(--accent-rose-bg); border: 1px solid var(--accent-rose-border); }
+.error-source { font-size: 0.82rem; font-weight: 700; color: var(--accent-rose); }
+.error-message { font-size: 0.78rem; color: var(--text-primary); margin-top: 0.15rem; font-family: var(--font-mono); word-break: break-all; }
+.error-time { font-size: 0.72rem; color: var(--text-muted); margin-top: 0.25rem; }
+
+/* WhatsAppPanel */
+.wa-panel { max-width: 860px; margin: 0 auto; }
+.wa-title { font-size: 1.25rem; font-weight: 700; }
+.wa-subtitle { font-size: 0.82rem; color: var(--text-secondary); }
+.wa-header-icon { width: 48px; height: 48px; border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-subtle); }
+.wa-header-icon-active { background-color: var(--brand-primary-bg); color: var(--brand-primary); }
+.wa-header-icon-inactive { background-color: var(--bg-card-subtle); color: var(--text-secondary); }
+.card-border-success { border-color: var(--brand-primary-border); }
+.card-border-warning { border-color: var(--accent-amber-border); }
+.wa-connected-content { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2rem 1rem; gap: 1.25rem; }
+.wa-status-icon-success { width: 72px; height: 72px; border-radius: 50%; background-color: var(--brand-primary-bg); color: var(--brand-primary); border: 2px solid var(--brand-primary-border); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 20px rgba(16, 185, 129, 0.25); }
+.wa-badge-wrap { display: inline-flex; align-items: center; gap: 0.4rem; margin-bottom: 0.35rem; }
+.wa-phone-heading { font-size: 1.6rem; font-weight: 800; margin-top: 0.5rem; letter-spacing: -0.01em; }
+.wa-muted-note { color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem; }
+.wa-qr-heading { font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem; }
+.wa-qr-description { color: var(--text-secondary); font-size: 0.85rem; max-width: 460px; margin-bottom: 1.5rem; }
+.wa-qr-placeholder { width: 240px; height: 240px; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: var(--bg-card-subtle); border-radius: var(--radius-lg); border: 1px dashed var(--border-strong); margin-bottom: 1.5rem; gap: 0.5rem; color: var(--text-muted); }
+.wa-empty-content { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3.5rem 1.5rem; text-align: center; }
+.wa-connecting-heading { font-size: 1.2rem; font-weight: 700; }
+.wa-connecting-description { color: var(--text-secondary); font-size: 0.85rem; max-width: 420px; }
+.wa-disconnected-description { color: var(--text-secondary); font-size: 0.88rem; max-width: 440px; margin-top: 0.3rem; }
+.wa-status-icon-neutral { width: 64px; height: 64px; border-radius: 50%; background-color: var(--bg-card-subtle); display: flex; align-items: center; justify-content: center; color: var(--text-muted); border: 1px solid var(--border-subtle); }
+.wa-connect-btn { padding: 0.75rem 1.75rem; font-size: 0.95rem; }
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .navbar-inner {

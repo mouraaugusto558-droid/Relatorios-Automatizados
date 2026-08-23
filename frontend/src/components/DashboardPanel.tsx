@@ -12,12 +12,14 @@ import {
   Check,
   Zap
 } from "lucide-react";
-import { useWhatsAppStatus } from "../hooks/useWhatsAppStatus";
-import { useJobs } from "../hooks/useJobs";
 import { useReports } from "../hooks/useReports";
-import { useHealth } from "../hooks/useHealth";
+import type { Job } from "../hooks/useJobs";
 import { useToast } from "../context/ToastContext";
+import { useAppData } from "../context/AppDataContext";
+import { useApiAction } from "../hooks/useApiAction";
+import { apiPost, ApiError } from "../api/client";
 import { StatsCard } from "./StatsCard";
+import { StatusPill } from "./StatusPill";
 import {
   formatDateTime,
   formatRelativeTime,
@@ -31,11 +33,9 @@ interface DashboardPanelProps {
 }
 
 export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
-  const whatsapp = useWhatsAppStatus();
-  const { jobs, refresh: refreshJobs } = useJobs();
+  const { whatsapp, jobs, refreshJobs, health, isOnline } = useAppData();
   const { reports } = useReports();
-  const { health, isOnline } = useHealth();
-  const { success, error: toastError } = useToast();
+  const { success } = useToast();
 
   const [runningJobId, setRunningJobId] = useState<string | null>(null);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -76,22 +76,29 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
 
   const recentErrors = [...jobErrors, ...reportErrors];
 
+  const quickRunAction = useApiAction(
+    async (job: Job) => {
+      const result = await apiPost<{ ok: boolean }>(`/api/jobs/${job.id}/run`);
+      await refreshJobs();
+      return result;
+    },
+    {
+      success: (_result, job) => ({
+        title: "Job disparado!",
+        message: `O job "${job.name}" foi iniciado.`
+      }),
+      error: (err) =>
+        err instanceof ApiError
+          ? { title: "Erro ao rodar job", message: `Código de retorno: ${err.status}` }
+          : { title: "Falha na requisição", message: "Não foi possível disparar o job." }
+    }
+  );
+
   const handleQuickRunNextJob = async () => {
     if (!nextJob) return;
     setRunningJobId(nextJob.id);
-    try {
-      const res = await fetch(`/api/jobs/${nextJob.id}/run`, { method: "POST" });
-      if (res.ok) {
-        success("Job disparado!", `O job "${nextJob.name}" foi iniciado.`);
-        await refreshJobs();
-      } else {
-        toastError("Erro ao rodar job", `Código de retorno: ${res.status}`);
-      }
-    } catch {
-      toastError("Falha na requisição", "Não foi possível disparar o job.");
-    } finally {
-      setRunningJobId(null);
-    }
+    await quickRunAction.run(nextJob);
+    setRunningJobId(null);
   };
 
   const copyErrorMessage = (text: string, index: number) => {
@@ -102,27 +109,20 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+    <div className="section-stack">
       {/* Top Banner / Welcome */}
-      <div
-        className="card"
-        style={{
-          background: "linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%)",
-          borderColor: "var(--border-subtle)",
-          padding: "1.5rem"
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "1rem" }}>
+      <div className="card dashboard-banner">
+        <div className="flex-between">
           <div>
-            <h1 style={{ fontSize: "1.4rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
+            <h1 className="dashboard-title">
               Visão Geral do Sistema
             </h1>
-            <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: "0.25rem" }}>
+            <p className="dashboard-subtitle">
               Acompanhe em tempo real o status dos disparos, automações agendadas e integridade do servidor.
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: "0.6rem" }}>
+          <div className="flex-row gap-060">
             {nextJob && (
               <button
                 className="btn btn-primary"
@@ -175,25 +175,23 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
           }
           badge={
             whatsapp?.status === "connected" ? (
-              <span className="pill pill-success">
-                <span className="status-dot status-dot-pulse" /> Ativo
-              </span>
+              <StatusPill tone="success" dot pulse>
+                Ativo
+              </StatusPill>
             ) : whatsapp?.status === "qr" ? (
-              <span className="pill pill-warning">
-                <span className="status-dot status-dot-pulse" /> Ler QR
-              </span>
+              <StatusPill tone="warning" dot pulse>
+                Ler QR
+              </StatusPill>
             ) : (
-              <span className="pill pill-error">
-                <span className="status-dot" /> Off
-              </span>
+              <StatusPill tone="error" dot>
+                Off
+              </StatusPill>
             )
           }
           footer={
-            <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="stats-footer-row">
               <span>Último evento: {formatRelativeTime(whatsapp?.lastEventAt)}</span>
-              <span
-                style={{ color: "var(--brand-primary)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.2rem" }}
-              >
+              <span className="stat-link stat-link-brand">
                 Gerenciar <ArrowRight size={13} />
               </span>
             </div>
@@ -210,23 +208,19 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
           iconColor="var(--accent-blue)"
           badge={
             runningJobs.length > 0 ? (
-              <span className="pill pill-warning">
-                <Zap size={13} /> {runningJobs.length} rodando
-              </span>
+              <StatusPill tone="warning" icon={<Zap size={13} />}>
+                {runningJobs.length} rodando
+              </StatusPill>
             ) : (
-              <span className="pill pill-neutral">
-                {jobs.length} configurados
-              </span>
+              <StatusPill tone="neutral">{jobs.length} configurados</StatusPill>
             )
           }
           footer={
-            <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="stats-footer-row">
               <span>
                 {nextJob ? `Próximo: ${formatRelativeTime(nextJob.nextRun)}` : "Nenhum agendamento"}
               </span>
-              <span
-                style={{ color: "var(--accent-blue)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.2rem" }}
-              >
+              <span className="stat-link stat-link-blue">
                 Ver jobs <ArrowRight size={13} />
               </span>
             </div>
@@ -243,19 +237,15 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
           iconColor="var(--accent-purple)"
           badge={
             sentReports.length > 0 ? (
-              <span className="pill pill-success">
-                {sentReports.length} enviados
-              </span>
+              <StatusPill tone="success">{sentReports.length} enviados</StatusPill>
             ) : undefined
           }
           footer={
-            <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div className="stats-footer-row">
               <span>
                 {lastReport ? `Último: ${formatRelativeTime(lastReport.createdAt)}` : "Sem relatórios"}
               </span>
-              <span
-                style={{ color: "var(--accent-purple)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "0.2rem" }}
-              >
+              <span className="stat-link stat-link-purple">
                 Histórico <ArrowRight size={13} />
               </span>
             </div>
@@ -272,9 +262,9 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
           iconColor={isOnline && health?.status === "ok" ? "var(--brand-primary)" : "var(--accent-rose)"}
           badge={
             isOnline && health?.status === "ok" ? (
-              <span className="pill pill-success">SQLite OK</span>
+              <StatusPill tone="success">SQLite OK</StatusPill>
             ) : (
-              <span className="pill pill-error">Instável</span>
+              <StatusPill tone="error">Instável</StatusPill>
             )
           }
           footer={
@@ -284,7 +274,7 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
       </div>
 
       {/* Operations Overview & Recent Activity */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "1.5rem" }}>
+      <div className="grid-2col-320">
         {/* Status of Last Job & Next Job */}
         <div className="card">
           <div className="card-header">
@@ -297,69 +287,45 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                padding: "0.85rem",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--bg-card-subtle)",
-                border: "1px solid var(--border-subtle)"
-              }}
-            >
+          <div className="flex-col gap-100">
+            <div className="status-row-box">
               <div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>
+                <div className="label-caption">
                   Último Job Executado
                 </div>
-                <div style={{ fontSize: "0.95rem", fontWeight: 700, marginTop: "0.2rem" }}>
+                <div className="status-row-value">
                   {lastJob ? lastJob.name : "Nenhum job executado"}
                 </div>
                 {lastJob?.lastRun && (
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
+                  <div className="status-row-time">
                     {formatDateTime(lastJob.lastRun.startedAt)} ({formatRelativeTime(lastJob.lastRun.startedAt)})
                   </div>
                 )}
               </div>
 
               {lastJob?.lastRun && (
-                <span className={`pill ${lastJob.lastRun.status === "success" ? "pill-success" : "pill-error"}`}>
+                <StatusPill tone={lastJob.lastRun.status === "success" ? "success" : "error"}>
                   {lastJob.lastRun.status === "success" ? "Sucesso" : "Falha"}
-                </span>
+                </StatusPill>
               )}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                justifyContent: "space-between",
-                padding: "0.85rem",
-                borderRadius: "var(--radius-md)",
-                backgroundColor: "var(--bg-card-subtle)",
-                border: "1px solid var(--border-subtle)"
-              }}
-            >
+            <div className="status-row-box">
               <div>
-                <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", textTransform: "uppercase", fontWeight: 600 }}>
+                <div className="label-caption">
                   Próximo Agendamento
                 </div>
-                <div style={{ fontSize: "0.95rem", fontWeight: 700, marginTop: "0.2rem" }}>
+                <div className="status-row-value">
                   {nextJob ? nextJob.name : "Nenhum job agendado ativo"}
                 </div>
                 {nextJob?.nextRun && (
-                  <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
+                  <div className="status-row-time">
                     {formatDateTime(nextJob.nextRun)} ({formatRelativeTime(nextJob.nextRun)})
                   </div>
                 )}
               </div>
 
-              {nextJob && (
-                <span className="pill pill-info">
-                  Agendado
-                </span>
-              )}
+              {nextJob && <StatusPill tone="info">Agendado</StatusPill>}
             </div>
           </div>
         </div>
@@ -377,75 +343,42 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
               </p>
             </div>
             {recentErrors.length > 0 && (
-              <span className="pill pill-error">{recentErrors.length} erro(s)</span>
+              <StatusPill tone="error">{recentErrors.length} erro(s)</StatusPill>
             )}
           </div>
 
           {recentErrors.length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "2rem 1rem",
-                textAlign: "center",
-                backgroundColor: "var(--brand-primary-bg)",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--brand-primary-border)"
-              }}
-            >
-              <CheckCircle2 size={32} color="var(--brand-primary)" style={{ marginBottom: "0.5rem" }} />
-              <div style={{ fontWeight: 700, color: "var(--brand-primary)", fontSize: "0.95rem" }}>
+            <div className="errors-empty-box">
+              <CheckCircle2 size={32} color="var(--brand-primary)" className="mb-050" />
+              <div className="errors-empty-title">
                 Tudo funcionando perfeitamente!
               </div>
-              <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.2rem" }}>
+              <div className="errors-empty-description">
                 Nenhum erro de execução de jobs ou relatórios nos últimos ciclos.
               </div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", maxHeight: "260px", overflowY: "auto" }}>
+            <div className="errors-list">
               {recentErrors.map((err, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: "0.75rem",
-                    padding: "0.75rem 0.95rem",
-                    borderRadius: "var(--radius-md)",
-                    backgroundColor: "var(--accent-rose-bg)",
-                    border: "1px solid var(--accent-rose-border)"
-                  }}
-                >
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "var(--accent-rose)" }}>
+                <div key={idx} className="error-row">
+                  <div className="flex-1-min0">
+                    <div className="error-source">
                       {err.source}
                     </div>
-                    <div
-                      style={{
-                        fontSize: "0.78rem",
-                        color: "var(--text-primary)",
-                        marginTop: "0.15rem",
-                        fontFamily: "var(--font-mono)",
-                        wordBreak: "break-all"
-                      }}
-                    >
+                    <div className="error-message">
                       {err.message}
                     </div>
                     {err.time && (
-                      <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginTop: "0.25rem" }}>
+                      <div className="error-time">
                         {formatDateTime(err.time)} ({formatRelativeTime(err.time)})
                       </div>
                     )}
                   </div>
 
                   <button
-                    className="btn-icon"
+                    className="btn-icon btn-icon-xs"
                     onClick={() => copyErrorMessage(err.message, idx)}
                     title="Copiar mensagem de erro"
-                    style={{ width: "28px", height: "28px" }}
                   >
                     {copiedIndex === idx ? <Check size={14} color="var(--brand-primary)" /> : <Copy size={14} />}
                   </button>

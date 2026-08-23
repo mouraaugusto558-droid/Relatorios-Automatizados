@@ -23,9 +23,8 @@ export function StatsCard({
 }: StatsCardProps) {
   return (
     <div
-      className="stats-card"
+      className={`stats-card${onClick ? " stats-card-clickable" : ""}`}
       onClick={onClick}
-      style={{ cursor: onClick ? "pointer" : "default" }}
     >
       <div className="stats-card-top">
         <div

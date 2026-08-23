@@ -51,21 +51,14 @@ export function JobHistoryModal({ job, onClose }: JobHistoryModalProps) {
       <div className="modal-content" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "0.65rem" }}>
-            <div
-              style={{
-                padding: "0.4rem",
-                borderRadius: "var(--radius-sm)",
-                backgroundColor: "var(--accent-blue-bg)",
-                color: "var(--accent-blue)"
-              }}
-            >
+          <div className="flex-row gap-065">
+            <div className="history-header-icon">
               <Clock size={20} />
             </div>
             <div>
-              <h3 style={{ fontSize: "1.1rem", fontWeight: 700 }}>Histórico de Execuções</h3>
-              <p style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
-                Job: <strong>{job.name}</strong> <span style={{ opacity: 0.7 }}>({job.id})</span>
+              <h3 className="history-title">Histórico de Execuções</h3>
+              <p className="fs-080 text-muted">
+                Job: <strong>{job.name}</strong> <span className="opacity-70">({job.id})</span>
               </p>
             </div>
           </div>
@@ -77,17 +70,17 @@ export function JobHistoryModal({ job, onClose }: JobHistoryModalProps) {
         {/* Body */}
         <div className="modal-body">
           {isLoading ? (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "3rem 0", gap: "0.75rem", color: "var(--text-muted)" }}>
+            <div className="history-loading">
               <RotateCw size={24} className="spinner" />
               <span>Carregando execuções passadas...</span>
             </div>
           ) : error ? (
-            <div className="card" style={{ borderColor: "var(--accent-rose-border)", backgroundColor: "var(--accent-rose-bg)", color: "var(--accent-rose)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: 600 }}>
+            <div className="card history-error-card">
+              <div className="flex-row gap-050 font-semibold">
                 <AlertCircle size={18} />
                 <span>Erro ao carregar histórico</span>
               </div>
-              <p style={{ fontSize: "0.85rem", marginTop: "0.35rem" }}>{error}</p>
+              <p className="history-error-message">{error}</p>
             </div>
           ) : runs.length === 0 ? (
             <div className="empty-state">
@@ -134,35 +127,23 @@ export function JobHistoryModal({ job, onClose }: JobHistoryModalProps) {
                         )}
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600 }}>{formatDateTime(run.startedAt)}</div>
-                        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                        <div className="font-semibold">{formatDateTime(run.startedAt)}</div>
+                        <div className="cell-subtext">
                           {formatRelativeTime(run.startedAt)}
                         </div>
                       </td>
                       <td>
-                        <span style={{ fontFamily: "var(--font-mono)", fontSize: "0.82rem" }}>
+                        <span className="history-duration">
                           {formatDuration(run.durationMs)}
                         </span>
                       </td>
                       <td>
                         {run.error ? (
-                          <div
-                            style={{
-                              color: "var(--accent-rose)",
-                              fontSize: "0.8rem",
-                              background: "var(--accent-rose-bg)",
-                              padding: "0.35rem 0.6rem",
-                              borderRadius: "var(--radius-sm)",
-                              border: "1px solid var(--accent-rose-border)",
-                              fontFamily: "var(--font-mono)",
-                              maxWidth: "280px",
-                              wordBreak: "break-all"
-                            }}
-                          >
+                          <div className="history-error-cell">
                             {run.error}
                           </div>
                         ) : (
-                          <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                          <span className="text-muted fs-082">
                             Concluído sem erros
                           </span>
                         )}
