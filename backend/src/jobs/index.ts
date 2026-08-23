@@ -1,7 +1,7 @@
-import pino from "pino";
 import { getDatabase } from "../database";
 import { createJobsRepository } from "../database/repositories/jobsRepository";
 import { createJobRunsRepository } from "../database/repositories/jobRunsRepository";
+import { createServiceLogger } from "../utils/logger";
 import { createJobDefinitions } from "./definitions";
 import { createScheduler, type Scheduler } from "./scheduler";
 
@@ -9,7 +9,7 @@ let scheduler: Scheduler | null = null;
 
 export function getScheduler(): Scheduler {
   if (!scheduler) {
-    const logger = pino({ level: "warn" });
+    const logger = createServiceLogger();
     const database = getDatabase();
     scheduler = createScheduler(
       createJobDefinitions(logger),

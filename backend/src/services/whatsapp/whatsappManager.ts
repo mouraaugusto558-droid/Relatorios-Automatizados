@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { EventEmitter } from "node:events";
 import type { AnyMessageContent, WASocket } from "@whiskeysockets/baileys";
-import pino from "pino";
+import { createServiceLogger } from "../../utils/logger";
 
 interface BoomLikeError {
   output?: { statusCode?: number };
@@ -31,7 +31,7 @@ const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
 
 export function createWhatsAppManager(authPath: string): WhatsAppManager {
-  const logger = pino({ level: "warn" });
+  const logger = createServiceLogger();
   const emitter = new EventEmitter();
 
   let socket: WASocket | null = null;

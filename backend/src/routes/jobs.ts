@@ -1,7 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { getDatabase } from "../database";
-import { createJobsRepository } from "../database/repositories/jobsRepository";
-import { createJobRunsRepository } from "../database/repositories/jobRunsRepository";
+import { createRepositories } from "../database/repositories";
 import { getScheduler } from "../jobs";
 
 interface ToggleBody {
@@ -9,9 +8,7 @@ interface ToggleBody {
 }
 
 export async function jobsRoutes(app: FastifyInstance): Promise<void> {
-  const database = getDatabase();
-  const jobsRepository = createJobsRepository(database);
-  const jobRunsRepository = createJobRunsRepository(database);
+  const { jobs: jobsRepository, jobRuns: jobRunsRepository } = createRepositories(getDatabase());
 
   app.get("/api/jobs", async () => {
     const scheduler = getScheduler();
