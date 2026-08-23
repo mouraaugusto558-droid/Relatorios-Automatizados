@@ -1,0 +1,6 @@
+node_modules
+dist
+storage
+releases
+coverage
+package-lock.json
