@@ -115,6 +115,13 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
         if (!manualDisconnect && !loggedOut) {
           scheduleReconnect();
         } else {
+          if (loggedOut) {
+            // Sessão deslogada (ex.: desvinculada pelo celular, ou expirada): as
+            // credenciais salvas nunca mais vão autenticar. Sem limpá-las, uma
+            // futura chamada a connect() reusaria os mesmos creds inválidos e
+            // cairia no mesmo loggedOut de novo, sem nunca gerar um QR novo.
+            fs.rmSync(authPath, { recursive: true, force: true });
+          }
           status = "disconnected";
           qrCode = null;
           notify();

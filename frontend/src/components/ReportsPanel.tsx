@@ -1,5 +1,17 @@
-import { useReports } from "../hooks/useReports";
+import { useReports, type Report } from "../hooks/useReports";
 import { formatDateTime } from "../utils/formatDateTime";
+
+const REPORT_STATUS_META: Record<Report["status"], { label: string; color: string }> = {
+  pending: { label: "Pendente", color: "#b58105" },
+  generated: { label: "Gerado", color: "#1a73e8" },
+  sent: { label: "Enviado", color: "#188038" },
+  error: { label: "Erro", color: "#d93025" }
+};
+
+function StatusBadge({ status }: { status: Report["status"] }) {
+  const meta = REPORT_STATUS_META[status] ?? { label: status, color: "#666" };
+  return <span style={{ color: meta.color, fontWeight: 600 }}>{meta.label}</span>;
+}
 
 export function ReportsPanel() {
   const { reports } = useReports();
@@ -26,7 +38,9 @@ export function ReportsPanel() {
             <tr key={report.id}>
               <td>{report.name}</td>
               <td>{formatDateTime(report.createdAt)}</td>
-              <td>{report.status}</td>
+              <td>
+                <StatusBadge status={report.status} />
+              </td>
               <td>{report.filePath}</td>
             </tr>
           ))}

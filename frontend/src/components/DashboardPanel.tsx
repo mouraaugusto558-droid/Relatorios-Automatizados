@@ -10,6 +10,13 @@ const STATUS_LABELS: Record<string, string> = {
   connected: "Conectado"
 };
 
+const REPORT_STATUS_LABELS: Record<string, string> = {
+  pending: "Pendente",
+  generated: "Gerado",
+  sent: "Enviado",
+  error: "Erro"
+};
+
 export function DashboardPanel() {
   const whatsapp = useWhatsAppStatus();
   const { jobs } = useJobs();
@@ -47,7 +54,7 @@ export function DashboardPanel() {
         </li>
         <li>Próximo job: {nextJob ? `${nextJob.name} — ${formatDateTime(nextJob.nextRun)}` : "—"}</li>
         <li>
-          Último relatório: {lastReport ? `${lastReport.name} — ${lastReport.status} (${formatDateTime(lastReport.createdAt)})` : "—"}
+          Último relatório: {lastReport ? `${lastReport.name} — ${REPORT_STATUS_LABELS[lastReport.status] ?? lastReport.status} (${formatDateTime(lastReport.createdAt)})` : "—"}
         </li>
       </ul>
 
