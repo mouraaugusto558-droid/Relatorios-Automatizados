@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import QRCode from "qrcode";
 import { getWhatsAppManager, type WhatsAppStatus } from "../services/whatsapp";
+import { env } from "../config/env";
 
 interface WhatsAppStatusPayload {
   status: WhatsAppStatus["status"];
@@ -35,10 +36,20 @@ export async function whatsappRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/api/whatsapp/events", async (request, reply) => {
     reply.hijack();
+    // reply.raw.writeHead() ignora qualquer header já setado no `reply` do Fastify —
+    // inclusive o Access-Control-Allow-Origin que o @fastify/cors normalmente injeta.
+    // Como este endpoint não passa pelo pipeline normal de resposta (hijack), o CORS
+    // precisa ser reaplicado manualmente aqui, senão o EventSource cross-origin falha.
+    const corsHeaders: Record<string, string> = {};
+    if (env.corsAllowedOrigin) {
+      corsHeaders["Access-Control-Allow-Origin"] = env.corsAllowedOrigin;
+      corsHeaders["Access-Control-Allow-Credentials"] = "true";
+    }
     reply.raw.writeHead(200, {
       "Content-Type": "text/event-stream",
       "Cache-Control": "no-cache",
-      Connection: "keep-alive"
+      Connection: "keep-alive",
+      ...corsHeaders
     });
 
     const send = async (status: WhatsAppStatus): Promise<void> => {
