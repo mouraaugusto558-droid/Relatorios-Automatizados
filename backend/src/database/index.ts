@@ -44,8 +44,20 @@ export function runMigrations(database: DatabaseSync): void {
       name TEXT NOT NULL,
       file_path TEXT NOT NULL,
       status TEXT NOT NULL,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
+  `);
+
+  // `datetime('now')` grava UTC sem sufixo de timezone (ex. "2026-08-24 19:48:41"),
+  // que o `new Date()` do navegador interpreta como hora local — deslocando a
+  // exibição em horas. Linhas gravadas antes dessa correção ficaram com esse
+  // formato ambíguo; aqui só reformatamos pra ISO 8601 com "Z" (mesmo instante,
+  // string diferente). Idempotente: roda em todo boot, mas só afeta linhas que
+  // ainda não terminam em "Z".
+  database.exec(`
+    UPDATE reports SET created_at = REPLACE(created_at, ' ', 'T') || 'Z' WHERE created_at NOT LIKE '%Z';
+    UPDATE job_runs SET started_at = REPLACE(started_at, ' ', 'T') || 'Z' WHERE started_at NOT LIKE '%Z';
+    UPDATE job_runs SET finished_at = REPLACE(finished_at, ' ', 'T') || 'Z' WHERE finished_at IS NOT NULL AND finished_at NOT LIKE '%Z';
   `);
 }
 

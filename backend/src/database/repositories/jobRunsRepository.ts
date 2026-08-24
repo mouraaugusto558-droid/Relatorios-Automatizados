@@ -44,11 +44,11 @@ export interface JobRunsRepository {
 
 export function createJobRunsRepository(database: DatabaseSync): JobRunsRepository {
   const startStmt = database.prepare(
-    `INSERT INTO job_runs (job_id, started_at, status) VALUES (?, datetime('now'), 'running')`
+    `INSERT INTO job_runs (job_id, started_at, status) VALUES (?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), 'running')`
   );
   const finishStmt = database.prepare(`
     UPDATE job_runs
-    SET finished_at = datetime('now'),
+    SET finished_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
         status = ?,
         error = ?,
         duration_ms = CAST((julianday('now') - julianday(started_at)) * 86400000 AS INTEGER)

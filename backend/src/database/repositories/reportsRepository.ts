@@ -37,7 +37,7 @@ export interface ReportsRepository {
 
 export function createReportsRepository(database: DatabaseSync): ReportsRepository {
   const createStmt = database.prepare(
-    `INSERT INTO reports (name, file_path, status) VALUES (?, ?, ?)`
+    `INSERT INTO reports (name, file_path, status, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
   );
   const updateStatusStmt = database.prepare(`UPDATE reports SET status = ? WHERE id = ?`);
   const getByIdStmt = database.prepare(`SELECT * FROM reports WHERE id = ?`);
