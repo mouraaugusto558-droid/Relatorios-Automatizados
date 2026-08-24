@@ -11,7 +11,8 @@ export function useWhatsAppStatus(): WhatsAppStatusPayload | null {
   const [status, setStatus] = useState<WhatsAppStatusPayload | null>(null);
 
   useEffect(() => {
-    const source = new EventSource("/api/whatsapp/events", { withCredentials: true });
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "";
+    const source = new EventSource(`${apiBaseUrl}/api/whatsapp/events`, { withCredentials: true });
 
     source.onmessage = (event) => {
       setStatus(JSON.parse(event.data) as WhatsAppStatusPayload);

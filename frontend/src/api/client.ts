@@ -14,6 +14,11 @@ export class ApiError extends Error {
   }
 }
 
+/** Base da API quando front e back ficam em domínios diferentes (Vercel +
+ * EasyPanel). Vazia em dev/same-origin (comportamento atual, caminho
+ * relativo) — só definida no build feito para a Vercel. */
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "";
+
 type UnauthorizedListener = () => void;
 const unauthorizedListeners = new Set<UnauthorizedListener>();
 
@@ -26,7 +31,7 @@ export function onUnauthorized(listener: UnauthorizedListener): () => void {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...init, credentials: "include" });
+  const response = await fetch(`${API_BASE_URL}${path}`, { ...init, credentials: "include" });
 
   if (!response.ok) {
     if (response.status === 401) {
