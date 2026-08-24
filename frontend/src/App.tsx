@@ -1,12 +1,15 @@
 import { useState, useCallback } from "react";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ToastProvider, useToast } from "./context/ToastContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { AppDataProvider, useAppData } from "./context/AppDataContext";
 import { Navbar, type TabId } from "./components/Navbar";
+import { LoginPage } from "./components/LoginPage";
 import { DashboardPanel } from "./components/DashboardPanel";
 import { WhatsAppPanel } from "./components/WhatsAppPanel";
 import { JobsPanel } from "./components/JobsPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
+import { SpreadsheetPanel } from "./components/SpreadsheetPanel";
 import { ToastContainer } from "./components/ToastContainer";
 import { useReports } from "./hooks/useReports";
 
@@ -44,6 +47,7 @@ function MainApp() {
         {activeTab === "whatsapp" && <WhatsAppPanel />}
         {activeTab === "jobs" && <JobsPanel />}
         {activeTab === "reports" && <ReportsPanel />}
+        {activeTab === "spreadsheet" && <SpreadsheetPanel />}
       </main>
 
       <ToastContainer />
@@ -51,13 +55,26 @@ function MainApp() {
   );
 }
 
+function AuthGate() {
+  const { isAuthenticated } = useAuth();
+
+  if (isAuthenticated === null) return null;
+  if (!isAuthenticated) return <LoginPage />;
+
+  return (
+    <AppDataProvider>
+      <MainApp />
+    </AppDataProvider>
+  );
+}
+
 export function App() {
   return (
     <ThemeProvider>
       <ToastProvider>
-        <AppDataProvider>
-          <MainApp />
-        </AppDataProvider>
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
       </ToastProvider>
     </ThemeProvider>
   );

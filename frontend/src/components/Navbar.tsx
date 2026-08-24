@@ -3,18 +3,21 @@ import {
   MessageSquare,
   CalendarClock,
   FileSpreadsheet,
+  Table2,
   Moon,
   Sun,
   RotateCw,
   Activity,
-  Server
+  Server,
+  LogOut
 } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
 import { useAppData } from "../context/AppDataContext";
+import { useAuth } from "../context/AuthContext";
 import { StatusPill } from "./StatusPill";
 import { formatPhoneNumber } from "../utils/formatDateTime";
 
-export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports";
+export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports" | "spreadsheet";
 
 interface NavbarProps {
   activeTab: TabId;
@@ -35,6 +38,7 @@ export function Navbar({
 }: NavbarProps) {
   const { theme, toggleTheme } = useTheme();
   const { whatsapp, health, isOnline } = useAppData();
+  const { logout } = useAuth();
 
   const getWhatsAppPill = () => {
     if (!whatsapp) {
@@ -132,6 +136,16 @@ export function Navbar({
           >
             {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
           </button>
+
+          {/* Logout */}
+          <button
+            className="btn-icon"
+            onClick={() => void logout()}
+            title="Sair"
+            aria-label="Sair"
+          >
+            <LogOut size={17} />
+          </button>
         </div>
       </div>
 
@@ -174,6 +188,14 @@ export function Navbar({
           <FileSpreadsheet size={17} />
           <span>Relatórios</span>
           {reportsCount > 0 && <span className="tab-counter">{reportsCount}</span>}
+        </button>
+
+        <button
+          className={`tab-button ${activeTab === "spreadsheet" ? "active" : ""}`}
+          onClick={() => onSelectTab("spreadsheet")}
+        >
+          <Table2 size={17} />
+          <span>Planilha</span>
         </button>
       </nav>
     </header>

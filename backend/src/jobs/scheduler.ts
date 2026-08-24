@@ -37,6 +37,7 @@ export function createScheduler(
         });
       }
     }
+    jobsRepository.deleteNotIn(definitions.map((definition) => definition.id));
   }
 
   async function executeJob(definition: JobDefinition): Promise<void> {

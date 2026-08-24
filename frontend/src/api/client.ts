@@ -14,10 +14,24 @@ export class ApiError extends Error {
   }
 }
 
+type UnauthorizedListener = () => void;
+const unauthorizedListeners = new Set<UnauthorizedListener>();
+
+/** Registra um callback disparado toda vez que uma chamada à API devolver
+ * 401 (sessão ausente/expirada) — usado pelo `AuthContext` pra jogar o
+ * usuário de volta pra tela de login sem cada hook precisar tratar isso. */
+export function onUnauthorized(listener: UnauthorizedListener): () => void {
+  unauthorizedListeners.add(listener);
+  return () => unauthorizedListeners.delete(listener);
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, init);
+  const response = await fetch(path, { ...init, credentials: "include" });
 
   if (!response.ok) {
+    if (response.status === 401) {
+      unauthorizedListeners.forEach((listener) => listener());
+    }
     const method = init?.method ?? "GET";
     throw new ApiError(`API ${method} ${path} falhou (${response.status})`, response.status);
   }

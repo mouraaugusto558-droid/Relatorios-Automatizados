@@ -42,11 +42,8 @@ export const env = {
   otodataApiKey: process.env.OTODATA_API_KEY,
   openaiApiKey: process.env.OPENAI_API_KEY,
   reportRecipientNumber: process.env.REPORT_RECIPIENT_NUMBER,
-  supabaseUrl: process.env.SUPABASE_URL,
-  supabaseServiceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY,
-  googleSheetsSpreadsheetId: process.env.GOOGLE_SHEETS_SPREADSHEET_ID,
-  googleServiceAccountEmail: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-  // No .env a chave privada vem com quebras de linha escapadas ("\n" literal),
-  // já que um valor multilinha de verdade quebraria o parsing do dotenv.
-  googleServiceAccountPrivateKey: process.env.GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY?.replace(/\\n/g, "\n")
+  authUsername: process.env.AUTH_USERNAME,
+  authPasswordHash: process.env.AUTH_PASSWORD_HASH,
+  authSessionSecret: process.env.AUTH_SESSION_SECRET,
+  corsAllowedOrigin: process.env.CORS_ALLOWED_ORIGIN
 };

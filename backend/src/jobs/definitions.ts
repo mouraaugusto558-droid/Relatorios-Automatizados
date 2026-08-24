@@ -1,7 +1,6 @@
 import type { Logger } from "pino";
 import type { JobDefinition } from "./scheduler";
 import { runDailyReport } from "../services/reports";
-import { runDataSync } from "../services/dataSync";
 
 export function createJobDefinitions(logger: Logger): JobDefinition[] {
   return [
@@ -10,12 +9,6 @@ export function createJobDefinitions(logger: Logger): JobDefinition[] {
       name: "Relatório diário 08:00",
       cronExpression: "0 8 * * *",
       run: runDailyReport
-    },
-    {
-      id: "sincronizacao-dados",
-      name: "Sincronização Supabase + Planilha",
-      cronExpression: "0 * * * *",
-      run: runDataSync
     },
     {
       id: "automacao-meio-dia",

@@ -28,6 +28,7 @@ export interface JobsRepository {
   list(): Job[];
   findById(id: string): Job | undefined;
   setEnabled(id: string, enabled: boolean): void;
+  deleteNotIn(ids: string[]): void;
 }
 
 export function createJobsRepository(database: DatabaseSync): JobsRepository {
@@ -55,6 +56,15 @@ export function createJobsRepository(database: DatabaseSync): JobsRepository {
     },
     setEnabled(id: string, enabled: boolean): void {
       setEnabledStmt.run(enabled ? 1 : 0, id);
+    },
+    /** Remove jobs que não existem mais em `JobDefinition[]` (ex.: job removido
+     * do código) — junto com o histórico de execuções em `job_runs`, que tem
+     * FOREIGN KEY para `jobs.id` e bloquearia a exclusão direta. */
+    deleteNotIn(ids: string[]): void {
+      if (ids.length === 0) return;
+      const placeholders = ids.map(() => "?").join(", ");
+      database.prepare(`DELETE FROM job_runs WHERE job_id NOT IN (${placeholders})`).run(...ids);
+      database.prepare(`DELETE FROM jobs WHERE id NOT IN (${placeholders})`).run(...ids);
     }
   };
 }

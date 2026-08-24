@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createInMemoryDatabase } from "../createInMemoryDatabase";
 import { createJobsRepository } from "./jobsRepository";
+import { createJobRunsRepository } from "./jobRunsRepository";
 
 test("jobsRepository: upsert creates then updates a job", () => {
   const db = createInMemoryDatabase();
@@ -36,4 +37,30 @@ test("jobsRepository: findById returns undefined for unknown id", () => {
   const db = createInMemoryDatabase();
   const repo = createJobsRepository(db);
   assert.equal(repo.findById("nope"), undefined);
+});
+
+test("jobsRepository: deleteNotIn removes jobs (and their runs) absent from the id list", () => {
+  const db = createInMemoryDatabase();
+  const repo = createJobsRepository(db);
+  const runs = createJobRunsRepository(db);
+
+  repo.upsert({ id: "keep-me", name: "Fica", cronExpression: "0 8 * * *", enabled: true });
+  repo.upsert({ id: "remove-me", name: "Sai", cronExpression: "0 * * * *", enabled: true });
+  runs.start("remove-me");
+
+  repo.deleteNotIn(["keep-me"]);
+
+  assert.ok(repo.findById("keep-me"));
+  assert.equal(repo.findById("remove-me"), undefined);
+  assert.equal(runs.listRecent("remove-me").length, 0);
+});
+
+test("jobsRepository: deleteNotIn does nothing when given an empty list", () => {
+  const db = createInMemoryDatabase();
+  const repo = createJobsRepository(db);
+
+  repo.upsert({ id: "daily-report", name: "Relatório diário", cronExpression: "0 8 * * *", enabled: true });
+  repo.deleteNotIn([]);
+
+  assert.ok(repo.findById("daily-report"));
 });

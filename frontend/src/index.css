@@ -1160,6 +1160,28 @@ input:checked + .toggle-slider:before {
 .wa-status-icon-neutral { width: 64px; height: 64px; border-radius: 50%; background-color: var(--bg-card-subtle); display: flex; align-items: center; justify-content: center; color: var(--text-muted); border: 1px solid var(--border-subtle); }
 .wa-connect-btn { padding: 0.75rem 1.75rem; font-size: 0.95rem; }
 
+/* ==========================================================================
+   Login
+   ========================================================================== */
+
+.login-page { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background-color: var(--bg-app); }
+.login-card { width: 100%; max-width: 360px; display: flex; flex-direction: column; align-items: center; text-align: center; padding: 2.25rem 2rem; }
+.login-icon-wrapper { width: 56px; height: 56px; border-radius: var(--radius-full); background-color: var(--brand-primary-bg); color: var(--brand-primary); border: 1px solid var(--brand-primary-border); display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+.login-title { font-size: 1.25rem; font-weight: 700; }
+.login-subtitle { margin-bottom: 1.5rem; }
+.login-field { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 0.35rem; margin-bottom: 1rem; font-size: 0.82rem; color: var(--text-secondary); font-weight: 600; }
+.login-field .input-text { width: 100%; }
+.login-error { display: flex; align-items: center; gap: 0.4rem; color: var(--accent-rose); font-size: 0.8rem; background-color: var(--accent-rose-bg); border: 1px solid var(--accent-rose-border); border-radius: var(--radius-sm); padding: 0.5rem 0.7rem; width: 100%; margin-bottom: 1rem; }
+.login-submit { width: 100%; padding: 0.7rem 1rem; }
+
+/* ==========================================================================
+   Planilha (spreadsheet report)
+   ========================================================================== */
+
+.spreadsheet-table-wrapper { margin-bottom: 1.5rem; }
+.spreadsheet-table-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.6rem; }
+.spreadsheet-status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 0.5rem; flex-shrink: 0; }
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .navbar-inner {
