@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { X, RotateCw, CheckCircle2, AlertCircle, Clock, Terminal } from "lucide-react";
 import type { Job, JobRun } from "../hooks/useJobs";
 import { formatDateTime, formatDuration, formatRelativeTime } from "../utils/formatDateTime";
+import { apiGet } from "../api/client";
 
 interface JobHistoryModalProps {
   job: Job | null;
@@ -18,10 +19,7 @@ export function JobHistoryModal({ job, onClose }: JobHistoryModalProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/jobs/${job.id}/runs`);
-      if (!res.ok) throw new Error(`Falha ao obter histórico (${res.status})`);
-      const data = (await res.json()) as JobRun[];
-      setRuns(data);
+      setRuns(await apiGet<JobRun[]>(`/api/jobs/${job.id}/runs`));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erro desconhecido");
     } finally {
