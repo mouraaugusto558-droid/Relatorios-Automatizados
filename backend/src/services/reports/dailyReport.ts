@@ -4,8 +4,17 @@ import { statusMeta, formatLevel, deviceLabel, getAlarms, getFills } from "./dev
 const DIVIDER = "──────────────────";
 
 function formatDateTime(date: Date): string {
-  const datePart = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
-  const timePart = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  const datePart = date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "America/Sao_Paulo"
+  });
+  const timePart = date.toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "America/Sao_Paulo"
+  });
   return `${datePart} às ${timePart}`;
 }
 
