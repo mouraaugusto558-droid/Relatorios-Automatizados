@@ -6,7 +6,10 @@ const ROW_HEIGHT = 32;
 const HEADER_HEIGHT = 40;
 const TITLE_HEIGHT = 44;
 const PADDING = 16;
-const FONT_FAMILY = "sans-serif";
+// "DejaVu Sans" é instalada no container de produção (ver Dockerfile, pacote
+// fonts-dejavu-core). O fallback genérico "sans-serif" cobre ambientes onde
+// ela não existe (ex.: Windows/macOS em desenvolvimento local).
+const FONT_FAMILY = "'DejaVu Sans', sans-serif";
 
 const COLOR_TITLE_BG = "#1e293b";
 const COLOR_TITLE_TEXT = "#f8fafc";
