@@ -55,3 +55,24 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
 }
+
+/** Baixa um arquivo da API e dispara o download no navegador, sem navegar a
+ * página (mantém a sessão via `credentials: include`, igual às demais chamadas). */
+export async function apiDownload(path: string, fileName: string): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}${path}`, { credentials: "include" });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      unauthorizedListeners.forEach((listener) => listener());
+    }
+    throw new ApiError(`API GET ${path} falhou (${response.status})`, response.status);
+  }
+
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = fileName;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}

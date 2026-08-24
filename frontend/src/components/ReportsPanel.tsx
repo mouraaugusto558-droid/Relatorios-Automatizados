@@ -6,13 +6,13 @@ import {
   AlertCircle,
   Clock,
   FileText,
-  Copy,
-  Check,
+  Download,
   RotateCw,
   FolderOpen
 } from "lucide-react";
 import { useReports, type Report } from "../hooks/useReports";
 import { useToast } from "../context/ToastContext";
+import { apiDownload } from "../api/client";
 import { useApiAction } from "../hooks/useApiAction";
 import { useSearchAndFilter } from "../hooks/useSearchAndFilter";
 import { StatusPill } from "./StatusPill";
@@ -59,11 +59,11 @@ function ReportStatusBadge({ status }: { status: Report["status"] }) {
 
 export function ReportsPanel() {
   const { reports, refresh } = useReports();
-  const { success } = useToast();
+  const { error } = useToast();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
-  const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
 
   const refreshAction = useApiAction(refresh, {
     success: () => ({
@@ -80,11 +80,15 @@ export function ReportsPanel() {
     void refreshAction.run();
   };
 
-  const handleCopyPath = (filePath: string, id: number) => {
-    navigator.clipboard.writeText(filePath);
-    setCopiedId(id);
-    success("Caminho copiado!", filePath);
-    setTimeout(() => setCopiedId(null), 2500);
+  const handleDownload = async (report: Report) => {
+    setDownloadingId(report.id);
+    try {
+      await apiDownload(`/api/reports/${report.id}/download`, report.name);
+    } catch {
+      error("Falha ao baixar", "Não foi possível baixar o relatório.");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   // Metrics
@@ -203,7 +207,7 @@ export function ReportsPanel() {
                 <th className="col-26">Relatório</th>
                 <th className="col-18">Data de Criação</th>
                 <th className="col-16">Status</th>
-                <th className="col-40">Caminho do Arquivo</th>
+                <th className="col-40">Download</th>
               </tr>
             </thead>
             <tbody>
@@ -237,28 +241,17 @@ export function ReportsPanel() {
                     <ReportStatusBadge status={report.status} />
                   </td>
 
-                  {/* File Path + Copy Action */}
+                  {/* Download Action */}
                   <td>
-                    <div className="filepath-row">
-                      <span
-                        className="font-mono fs-078 text-secondary text-ellipsis"
-                        title={report.filePath}
-                      >
-                        {report.filePath}
-                      </span>
-
-                      <button
-                        className="btn-icon btn-icon-xxs"
-                        onClick={() => handleCopyPath(report.filePath, report.id)}
-                        title="Copiar caminho completo do arquivo"
-                      >
-                        {copiedId === report.id ? (
-                          <Check size={13} color="var(--brand-primary)" />
-                        ) : (
-                          <Copy size={13} />
-                        )}
-                      </button>
-                    </div>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => void handleDownload(report)}
+                      disabled={downloadingId === report.id}
+                      title="Baixar relatório em Markdown"
+                    >
+                      <Download size={14} className={downloadingId === report.id ? "spinner" : ""} />
+                      Baixar
+                    </button>
                   </td>
                 </tr>
               ))}

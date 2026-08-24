@@ -38,7 +38,7 @@ export async function runDailyReport(): Promise<void> {
   const reportText = buildDailyReportText(devices);
 
   fs.mkdirSync(env.reportsPath, { recursive: true });
-  const fileName = `relatorio-diario-${new Date().toISOString().replace(/[:.]/g, "-")}.txt`;
+  const fileName = `relatorio-diario-${new Date().toISOString().replace(/[:.]/g, "-")}.md`;
   const filePath = path.join(env.reportsPath, fileName);
   fs.writeFileSync(filePath, reportText, "utf8");
 
