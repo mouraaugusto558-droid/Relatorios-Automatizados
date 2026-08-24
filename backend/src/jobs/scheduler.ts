@@ -64,7 +64,10 @@ export function createScheduler(
   }
 
   function scheduleTask(definition: JobDefinition, cronExpression: string): void {
-    const task = new Cron(cronExpression, () => {
+    // O container roda em UTC por padrão (não há TZ configurado no ambiente).
+    // Fixamos o fuso aqui para que os horários definidos em `definitions.ts`
+    // (ex.: "08:00") disparem no horário de Brasília real, e não 3h adiantados.
+    const task = new Cron(cronExpression, { timezone: "America/Sao_Paulo" }, () => {
       void executeJob(definition);
     });
     tasks.set(definition.id, task);
