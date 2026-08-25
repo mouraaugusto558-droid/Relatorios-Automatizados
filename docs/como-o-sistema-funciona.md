@@ -69,8 +69,12 @@ Arquivos: `backend/src/jobs/definitions.ts` e `backend/src/jobs/scheduler.ts`.
   | Job | Quando roda | O que faz |
   |---|---|---|
   | `relatorio-diario` | todo dia às 08:00 | gera e envia o relatório diário |
-  | `automacao-meio-dia` | todo dia às 12:00 | ainda não implementado |
 
+  > Existiram também os jobs `automacao-meio-dia` (12:00, nunca implementado)
+  > e `teste-1030` (10:30, temporário para validar o fuso horário do
+  > agendamento) — ambos removidos em 2026-08-25 a pedido do usuário, que só
+  > queria o envio das 08:00.
+  >
   > O job `sincronizacao-dados` (Supabase/Google Sheets) existiu até
   > `2026-08-24` e foi removido — ver seção 5.
 - **Importante:** isso só dispara se o processo do backend estiver rodando naquele horário. Se o servidor estiver desligado às 08:00, aquele disparo é perdido (não há "reprocessamento" automático depois).
