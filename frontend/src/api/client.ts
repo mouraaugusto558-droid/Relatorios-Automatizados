@@ -56,6 +56,14 @@ export function apiPost<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+export function apiPut<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "PUT",
+    headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+    body: body !== undefined ? JSON.stringify(body) : undefined
+  });
+}
+
 /** Baixa um arquivo da API e dispara o download no navegador, sem navegar a
  * página (mantém a sessão via `credentials: include`, igual às demais chamadas). */
 export async function apiDownload(path: string, fileName: string): Promise<void> {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   MessageSquare,
   Smartphone,
@@ -9,10 +9,12 @@ import {
   Power,
   Radio,
   ExternalLink,
-  ShieldCheck
+  ShieldCheck,
+  Send
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useApiAction } from "../hooks/useApiAction";
+import { useReportRecipient } from "../hooks/useReportRecipient";
 import { apiPost, ApiError } from "../api/client";
 import { ConfirmModal } from "./ConfirmModal";
 import {
@@ -20,6 +22,65 @@ import {
   formatPhoneNumber,
   formatRelativeTime
 } from "../utils/formatDateTime";
+
+function ReportRecipientCard() {
+  const { phoneNumber, update } = useReportRecipient();
+  const [draft, setDraft] = useState("");
+
+  useEffect(() => {
+    if (phoneNumber) setDraft(phoneNumber);
+  }, [phoneNumber]);
+
+  const saveAction = useApiAction((value: string) => update(value), {
+    success: () => ({
+      title: "Número atualizado",
+      message: "Os próximos relatórios serão enviados para este número."
+    }),
+    error: (err) =>
+      err instanceof ApiError && err.status === 400
+        ? { title: "Número inválido", message: "Informe um número válido com DDI e DDD (ex: 5511999999999)." }
+        : { title: "Erro de comunicação", message: "Não foi possível salvar o número." }
+  });
+
+  const isDirty = draft.replace(/\D/g, "") !== (phoneNumber ?? "");
+
+  return (
+    <div className="card">
+      <div className="flex-row gap-085 mb-100">
+        <div className="wa-header-icon wa-header-icon-inactive">
+          <Send size={24} />
+        </div>
+        <div>
+          <h2 className="wa-title">Número de Destino dos Relatórios</h2>
+          <p className="wa-subtitle">
+            Número de WhatsApp (com DDI e DDD, só dígitos) que recebe os relatórios diários automaticamente.
+          </p>
+        </div>
+      </div>
+
+      <div className="flex-row-wrap gap-075">
+        <input
+          type="text"
+          className="input-text"
+          style={{ paddingLeft: "0.85rem", flex: "1 1 260px", maxWidth: "340px" }}
+          placeholder="Ex: 5511999999999"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <button
+          className="btn btn-primary btn-sm"
+          onClick={() => void saveAction.run(draft)}
+          disabled={saveAction.isPending || !isDirty || draft.trim() === ""}
+        >
+          <CheckCircle2 size={15} className={saveAction.isPending ? "spinner" : ""} />
+          {saveAction.isPending ? "Salvando..." : "Salvar"}
+        </button>
+      </div>
+
+      {phoneNumber && <p className="wa-muted-note mt-050">Atual: {formatPhoneNumber(phoneNumber)}</p>}
+    </div>
+  );
+}
 
 export function WhatsAppPanel() {
   const { whatsapp: status } = useAppData();
@@ -127,6 +188,8 @@ export function WhatsAppPanel() {
           </div>
         </div>
       </div>
+
+      <ReportRecipientCard />
 
       {/* Main Connection Status Card */}
       {currentStatus === "connected" && (
