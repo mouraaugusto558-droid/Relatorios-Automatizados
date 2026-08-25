@@ -36,7 +36,14 @@ async function main(): Promise<void> {
   });
 
   if (env.corsAllowedOrigin) {
-    await app.register(fastifyCors, { origin: env.corsAllowedOrigin, credentials: true });
+    // Default do @fastify/cors é só "GET,HEAD,POST" — sem isso, qualquer rota
+    // PUT/PATCH/DELETE cross-origin (Vercel -> EasyPanel) falha no preflight
+    // com "Method X is not allowed by Access-Control-Allow-Methods".
+    await app.register(fastifyCors, {
+      origin: env.corsAllowedOrigin,
+      credentials: true,
+      methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]
+    });
   }
   await app.register(fastifyCookie);
 
