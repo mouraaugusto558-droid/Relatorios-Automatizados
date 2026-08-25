@@ -2,7 +2,7 @@
   "name": "meu-novo-projeto",
   "private": true,
   "version": "0.1.0",
-  "description": "Sistema monolítico Node.js + React + Baileys — dev no Windows 11, produção em Windows Server 2012 R2.",
+  "description": "Sistema monolítico Node.js + React + Baileys — backend em VPS via EasyPanel (Docker), frontend na Vercel.",
   "engines": {
     "node": ">=24.0.0 <25.0.0",
     "npm": ">=10.0.0"
