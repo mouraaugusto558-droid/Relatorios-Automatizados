@@ -1,11 +1,15 @@
 # Sistema Node.js + React + Baileys
 
-Monólito modular. Desenvolvimento no Windows 11, produção no Windows Server 2012 R2 (2 vCPU / 2GB RAM).
+Monólito modular. Backend em VPS Linux via EasyPanel (Docker), frontend na
+Vercel — processo de deploy documentado em [`CLAUDE.md`](./CLAUDE.md).
 
-Ver:
+Ver também:
 
-- [`Kickoff — ...md`](./Kickoff%20—%20Sistema%20Node.js%20+%20React%20+%20Baileys%20—%20Desenvolvimento%20Local%20e%20Deploy%20em%20Windows%20Server%202012%20R2.md) — especificação original.
-- [`planejamento`](./planejamento) — decisões de stack, fases e riscos.
+- [`docs/como-o-sistema-funciona.md`](./docs/como-o-sistema-funciona.md) —
+  visão geral de como as peças do sistema funcionam hoje.
+- [`docs/_archive/`](./docs/_archive/) — specs de ideias anteriores e
+  abandonadas (deploy em Windows Server, sincronização com Supabase/Google
+  Sheets), mantidas só como histórico.
 
 ## Desenvolvimento
 

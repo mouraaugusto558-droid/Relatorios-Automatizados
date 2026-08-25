@@ -24,6 +24,11 @@ morto por engano** — foi removido de `backend/src` de propósito, pra:
 - `supabase/` — cliente Supabase (`client.ts`), mapeamento de
   `OtodataDevice` pras colunas da tabela (`mapDevice.ts` + teste), e
   `syncDevices.ts` (upsert em lote).
+- `supabase/migrations/0001_tank_readings.sql` — SQL das tabelas
+  `tank_current_readings`/`tank_reading_events` (rodar no SQL Editor do
+  Supabase, ou `supabase db push`, antes de reativar). Movido pra cá em
+  `2026-08-24` junto do resto — antes ficava em `supabase/migrations/` na
+  raiz do repo.
 - `googleSheets/` — cliente Google Sheets via Service Account (`client.ts`),
   montagem das linhas da planilha (`buildRows.ts` + teste), e
   `syncDevices.ts` (grava os valores na aba configurada).
@@ -57,6 +62,9 @@ morto por engano** — foi removido de `backend/src` de propósito, pra:
    ```
 6. Preencher as variáveis reais no `.env` (URL/chave do Supabase e/ou
    ID da planilha + credenciais da Service Account do Google).
+7. Rodar `supabase/migrations/0001_tank_readings.sql` (nesta pasta) no
+   projeto Supabase (SQL Editor do dashboard ou `supabase db push`) antes de
+   preencher `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`.
 
 Tudo isso é reversível olhando o commit que fez essa remoção
 (`git log --follow` num dos arquivos aqui dentro mostra o histórico

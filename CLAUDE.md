@@ -2,6 +2,29 @@
 
 Visão geral do que o sistema faz: `docs/como-o-sistema-funciona.md`.
 
+## Ideias abandonadas (arquivadas, não excluídas)
+
+Três direções técnicas foram exploradas e abandonadas. Código e docs foram
+**movidos**, não apagados — cada local abaixo tem seu próprio `README.md`
+com o passo a passo completo de como reativar, então esta seção só serve de
+índice (não duplicar detalhe aqui).
+
+- **Deploy em Windows Server 2012 R2** (ideia original do projeto, antes da
+  VPS/EasyPanel atual): specs em `docs/_archive/kickoff-windows-server.md` e
+  `docs/_archive/planejamento-windows-server.md`; scripts (NSSM, junction de
+  release, backup) em `scripts/_archive/windows-server-deploy/`.
+- **Sincronização com Supabase**: plano em
+  `docs/_archive/plano-integracao-supabase-planilha.md`; código (cliente,
+  mapeamento, migração SQL) em
+  `backend/_archive/legacy-integrations/supabase/`.
+- **Sincronização com Google Sheets**: mesmo plano acima; código em
+  `backend/_archive/legacy-integrations/googleSheets/`.
+
+Motivo do abandono de Supabase/Sheets: substituídos pelo relatório em HTML
+estilo planilha + imagem PNG, enviado direto por WhatsApp (ver
+`docs/plano-relatorio-planilha-imagem.md`) — sem depender de nenhum serviço
+externo adicional.
+
 ## Deploy
 
 - **Backend**: manual, numa VPS via EasyPanel (Docker/Linux). Quem aplica o

@@ -154,6 +154,6 @@ frontend/src/
 ## 10. Coisas que exigem atenção manual
 
 - **QR Code do WhatsApp**: se a sessão cair e não reconectar (ex.: deslogado no celular), alguém precisa entrar na aba WhatsApp e escanear de novo.
-- **Servidor sempre ligado**: o agendamento só funciona com o processo `node dist/server.js` rodando continuamente (ver seção 4). Em produção isso normalmente é resolvido com um serviço do Windows (NSSM) ou pelo próprio EasyPanel, não com o `npm run dev`.
+- **Servidor sempre ligado**: o agendamento só funciona com o processo `node dist/server.js` rodando continuamente (ver seção 4). Em produção isso é resolvido pelo container Docker gerenciado pelo EasyPanel (reinício automático), não com o `npm run dev`.
 - **Variáveis de ambiente**: sem `REPORT_RECIPIENT_NUMBER` preenchido, o job de relatório falha direto (erro lançado antes de buscar qualquer dado). Sem `AUTH_USERNAME`/`AUTH_PASSWORD_HASH`/`AUTH_SESSION_SECRET`, nenhuma rota de login funciona (erro lançado na primeira tentativa).
 - **Deploy do frontend na Vercel**: pode ficar bloqueado por identidade de commit git sem acesso ao projeto (plano Hobby não aceita colaboradores em repo privado) — causa e correção documentadas no `CLAUDE.md` (raiz do repo).
