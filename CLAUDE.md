@@ -12,7 +12,7 @@ Visão geral do que o sistema faz: `docs/como-o-sistema-funciona.md`.
 
   ```
   cd frontend
-  npx vercel --prod --yes
+  npx vercel --prod --yes --scope alvaros-projects-f99b9f96
   ```
 
   Isso builda e já promove pra produção (`frontend-nine-psi-90.vercel.app`).
@@ -60,3 +60,21 @@ o `git config --local` acima não foi refeito), duas opções:
    anexa metadado de commit/autor ao deploy, então a checagem de acesso nunca
    é acionada. Foi assim que os primeiros deploys manuais desta sessão (antes
    da correção de identidade) conseguiram passar.
+
+### Gotcha: `npx vercel --prod --yes` sem `--scope` falha com "Not authorized" (2026-08-24)
+
+Mesmo com `vercel whoami` autenticado e `vercel teams ls` mostrando acesso ao
+time `alvaros-projects-f99b9f96` (que é dono do projeto `frontend`, conforme
+`frontend/.vercel/project.json` → `orgId`), rodar `npx vercel --prod --yes`
+sem mais nada falhou direto no upload com:
+
+```
+{"status":"error","reason":"deploy_failed","message":"Not authorized", ...}
+```
+
+Isso é diferente do gotcha de "commit author" acima (aquele bloqueia depois
+do upload, com status `Blocked` no dashboard; este falha antes de começar o
+build). **Correção**: passar `--scope alvaros-projects-f99b9f96` explicitamente
+— sem isso o CLI parece resolver pro escopo errado (conta pessoal) mesmo com
+o projeto linkado corretamente. Validado em 2026-08-24: com `--scope`, o
+deploy completou como `READY` e promoveu para produção.
