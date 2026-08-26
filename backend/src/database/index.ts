@@ -51,6 +51,13 @@ export function runMigrations(database: DatabaseSync): void {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS excluded_devices (
+      device_id INTEGER PRIMARY KEY,
+      name TEXT,
+      city TEXT,
+      excluded_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+    );
   `);
 
   // `datetime('now')` grava UTC sem sufixo de timezone (ex. "2026-08-24 19:48:41"),

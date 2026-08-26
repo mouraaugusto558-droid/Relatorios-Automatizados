@@ -108,6 +108,19 @@ Arquivos: `backend/src/routes/reports.ts` (`GET /api/reports/spreadsheet`) e `fr
 - Mostra em HTML (`<table>`) a mesma listagem que vira imagem no relatório diário — busca os tanques na Otodata **na hora** (não fica salva no banco) e monta as mesmas tabelas paginadas de `buildAlarmsSpreadsheet`/`buildFillsSpreadsheet`.
 - Cada linha tem uma bolinha colorida (mesma cor usada na imagem do WhatsApp, vinda de `STATUS_META`) indicando a gravidade do status.
 - Botão "Atualizar" refaz a consulta à Otodata (pode demorar alguns segundos — é a mesma API usada pelo relatório diário).
+- **Filtro** (`frontend/src/components/DeviceFilterBar.tsx`): status (multi-seleção), faixa de nível (%), cidade/região/produto, busca livre por nome e alarme de bateria — combinados com "E" entre categorias (ex.: status "Nível alto" **E** nível ≥ 90). A lógica de filtragem fica em `backend/src/services/reports/deviceFilters.ts` (`filterDevices`/`parseFilterQuery`), aplicada nos parâmetros da querystring de `GET /api/reports/spreadsheet` — a resposta traz `totalDevices`/`filteredDevices` para a UI mostrar quantos tanques o filtro deixou passar. Esse filtro por querystring é **só visualização** — não muda o que é salvo nem o que sai no relatório automático (ver "filtro do relatório diário" abaixo).
+- **Filtro do relatório diário (persistido)**: botão "Salvar como filtro do relatório diário" na mesma barra grava o critério em `settings` (chave `report_filter_criteria`, via `GET`/`PUT /api/settings/report-filter`) — esse sim é lido por `runDailyReport()` (`backend/src/services/reports/index.ts`) e aplicado **antes** de montar texto/planilha/imagens, então passa a valer tanto pro disparo automático das 08:00 quanto pro "Rodar agora" da aba Jobs. Sem filtro salvo (padrão), o relatório inclui todos os tanques não excluídos, igual sempre foi.
+- Tanques excluídos (ver 6.2) nunca aparecem aqui, independente do filtro.
+
+## 6.2 Aba "Excluir Clientes"
+
+Arquivos: `backend/src/routes/devices.ts`, `backend/src/database/repositories/excludedDevicesRepository.ts` e `frontend/src/components/ExclusionPanel.tsx`.
+
+- Lista **todos** os tanques da Otodata (`GET /api/devices`, sem nenhum filtro), com ID, nome, cidade, status e nível — cada linha tem um botão "Excluir" (ou "Excluído" se já estiver na lista).
+- Exclusão é por `device.Id` (numérico, estável, vindo da própria Otodata), persistida na tabela `excluded_devices` do SQLite — não é um filtro de tela, é permanente até alguém restaurar.
+- Também dá pra colar uma lista de vários IDs de uma vez (separados por vírgula, espaço ou quebra de linha); o sistema valida contra a lista de tanques carregada, mostra uma prévia (nomes encontrados / IDs não encontrados) e só exclui depois de confirmar.
+- Seção "Clientes excluídos" lista quem está de fora hoje (nome, cidade, data da exclusão) com botão "Restaurar" — reversível a qualquer momento.
+- **Onde a exclusão é aplicada**: em `runDailyReport()` (`backend/src/services/reports/index.ts`, relatório automático das 08:00) e em `GET /api/reports/spreadsheet` (aba Planilha) — em ambos, os tanques excluídos são removidos da lista **antes** de montar texto/tabelas/imagens. Em `runDailyReport()`, a ordem é: exclusão primeiro, depois o filtro salvo (6.1) — as duas coisas combinam (um tanque excluído nunca entra, mesmo que bata o filtro).
 
 ## 7. Autenticação (login e senha)
 

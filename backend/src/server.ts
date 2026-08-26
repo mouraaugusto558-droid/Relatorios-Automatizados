@@ -12,6 +12,7 @@ import { whatsappRoutes } from "./routes/whatsapp";
 import { jobsRoutes } from "./routes/jobs";
 import { reportsRoutes } from "./routes/reports";
 import { settingsRoutes } from "./routes/settings";
+import { devicesRoutes } from "./routes/devices";
 import { getWhatsAppManager } from "./services/whatsapp";
 import { getScheduler } from "./jobs";
 import { getAuthService, SESSION_COOKIE_NAME } from "./services/auth";
@@ -64,6 +65,7 @@ async function main(): Promise<void> {
   await app.register(jobsRoutes);
   await app.register(reportsRoutes);
   await app.register(settingsRoutes);
+  await app.register(devicesRoutes);
 
   const frontendDist = path.resolve(__dirname, "..", "..", "frontend", "dist");
   if (fs.existsSync(frontendDist)) {

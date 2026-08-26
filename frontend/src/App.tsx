@@ -10,13 +10,16 @@ import { WhatsAppPanel } from "./components/WhatsAppPanel";
 import { JobsPanel } from "./components/JobsPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
 import { SpreadsheetPanel } from "./components/SpreadsheetPanel";
+import { ExclusionPanel } from "./components/ExclusionPanel";
 import { ToastContainer } from "./components/ToastContainer";
 import { useReports } from "./hooks/useReports";
+import { useExcludedDevices } from "./hooks/useExcludedDevices";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const { jobs, refreshJobs, refreshHealth } = useAppData();
   const { reports, refresh: refreshReports } = useReports();
+  const { excludedList, refresh: refreshExcludedDevices } = useExcludedDevices();
   const { success } = useToast();
 
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
@@ -24,12 +27,12 @@ function MainApp() {
   const handleRefreshAll = useCallback(async () => {
     setIsRefreshingAll(true);
     try {
-      await Promise.allSettled([refreshJobs(), refreshReports(), refreshHealth()]);
+      await Promise.allSettled([refreshJobs(), refreshReports(), refreshHealth(), refreshExcludedDevices()]);
       success("Painel atualizado", "Todos os dados foram sincronizados com o servidor.");
     } finally {
       setIsRefreshingAll(false);
     }
-  }, [refreshJobs, refreshReports, refreshHealth, success]);
+  }, [refreshJobs, refreshReports, refreshHealth, refreshExcludedDevices, success]);
 
   return (
     <div className="app-container">
@@ -38,6 +41,7 @@ function MainApp() {
         onSelectTab={setActiveTab}
         jobsCount={jobs.length}
         reportsCount={reports.length}
+        excludedCount={excludedList.length}
         onRefreshAll={handleRefreshAll}
         isRefreshing={isRefreshingAll}
       />
@@ -48,6 +52,7 @@ function MainApp() {
         {activeTab === "jobs" && <JobsPanel />}
         {activeTab === "reports" && <ReportsPanel />}
         {activeTab === "spreadsheet" && <SpreadsheetPanel />}
+        {activeTab === "exclusion" && <ExclusionPanel />}
       </main>
 
       <ToastContainer />

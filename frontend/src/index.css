@@ -1182,6 +1182,143 @@ input:checked + .toggle-slider:before {
 .spreadsheet-table-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.6rem; }
 .spreadsheet-status-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 0.5rem; flex-shrink: 0; }
 
+/* Exclusão de clientes (aba "Excluir Clientes") e filtro de listagem (aba Planilha) */
+.mt-075 { margin-top: 0.75rem; }
+.mt-100 { margin-top: 1rem; }
+
+.textarea-paste-ids {
+  width: 100%;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.85rem;
+  font-size: 0.85rem;
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+  outline: none;
+  resize: vertical;
+  min-height: 90px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.textarea-paste-ids:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.input-number {
+  width: 90px;
+  background-color: var(--bg-input);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 0.5rem 0.65rem;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color var(--transition-fast);
+}
+
+.input-number:focus {
+  border-color: var(--border-focus);
+}
+
+.multiselect-box {
+  width: 200px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background-color: var(--bg-input);
+  overflow: hidden;
+}
+
+.multiselect-search {
+  width: 100%;
+  border: none;
+  border-bottom: 1px solid var(--border-subtle);
+  background: transparent;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  outline: none;
+}
+
+.multiselect-list {
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 0.25rem 0;
+}
+
+.multiselect-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.multiselect-row:hover {
+  background-color: var(--bg-card-subtle);
+}
+
+.multiselect-empty {
+  padding: 0.5rem 0.6rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.multiselect-count {
+  color: var(--brand-primary);
+  font-weight: 600;
+}
+
+.multiselect-clear {
+  background: none;
+  border: none;
+  color: var(--accent-blue);
+  font-size: 0.75rem;
+  padding: 0.25rem 0 0;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.multiselect-hint {
+  display: block;
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  padding-top: 0.25rem;
+}
+
+.chip-toggle {
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-card-subtle);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.chip-toggle:hover {
+  border-color: var(--border-focus);
+}
+
+.chip-toggle.active {
+  background-color: var(--brand-primary-bg);
+  border-color: var(--brand-primary-border);
+  color: var(--brand-primary);
+}
+
+.filter-field-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.35rem;
+  display: block;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .navbar-inner {

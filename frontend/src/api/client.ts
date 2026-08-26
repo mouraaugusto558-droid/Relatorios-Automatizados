@@ -64,6 +64,10 @@ export function apiPut<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+export function apiDelete<T>(path: string): Promise<T> {
+  return request<T>(path, { method: "DELETE" });
+}
+
 /** Baixa um arquivo da API e dispara o download no navegador, sem navegar a
  * página (mantém a sessão via `credentials: include`, igual às demais chamadas). */
 export async function apiDownload(path: string, fileName: string): Promise<void> {

@@ -1,6 +1,9 @@
 import { Table2, RotateCw, FolderOpen } from "lucide-react";
-import { useSpreadsheet, type SpreadsheetTable } from "../hooks/useSpreadsheet";
+import { useSpreadsheet, type SpreadsheetTable, type DeviceFilterCriteria } from "../hooks/useSpreadsheet";
+import { useDevices } from "../hooks/useDevices";
+import { useReportFilter } from "../hooks/useReportFilter";
 import { useApiAction } from "../hooks/useApiAction";
+import { DeviceFilterBar } from "./DeviceFilterBar";
 import { formatDateTime } from "../utils/formatDateTime";
 
 function SpreadsheetTableView({ table }: { table: SpreadsheetTable }) {
@@ -47,8 +50,10 @@ function SpreadsheetTableView({ table }: { table: SpreadsheetTable }) {
 
 export function SpreadsheetPanel() {
   const { data, isLoading, refresh } = useSpreadsheet();
+  const { devices } = useDevices();
+  const { criteria: savedCriteria, save: saveReportFilter } = useReportFilter();
 
-  const refreshAction = useApiAction(refresh, {
+  const refreshAction = useApiAction<[DeviceFilterCriteria?], void>(refresh, {
     success: () => ({
       title: "Planilha atualizada",
       message: "Os dados foram recarregados a partir da Otodata."
@@ -58,6 +63,22 @@ export function SpreadsheetPanel() {
       message: "Não foi possível recarregar a planilha."
     })
   });
+
+  const saveFilterAction = useApiAction(saveReportFilter, {
+    success: () => ({
+      title: "Filtro salvo",
+      message: "O relatório das 08:00 (e o \"Rodar agora\") agora vai considerar esse filtro."
+    }),
+    error: () => ({
+      title: "Falha ao salvar filtro",
+      message: "Não foi possível salvar o filtro do relatório diário."
+    })
+  });
+
+  const handleApplyFilter = (criteria: DeviceFilterCriteria) => void refreshAction.run(criteria);
+  const handleClearFilter = () => void refreshAction.run({});
+  const handleSaveFilter = (criteria: DeviceFilterCriteria) => void saveFilterAction.run(criteria);
+  const handleClearSavedFilter = () => void saveFilterAction.run({});
 
   return (
     <div className="section-stack">
@@ -71,6 +92,9 @@ export function SpreadsheetPanel() {
             <p className="card-subtitle">
               Mesma listagem enviada como imagem no WhatsApp junto ao relatório diário.
               {data && ` Gerada em ${formatDateTime(data.generatedAt)}.`}
+              {data && data.filteredDevices !== data.totalDevices && (
+                <> Mostrando {data.filteredDevices} de {data.totalDevices} tanques (filtro ativo).</>
+              )}
             </p>
           </div>
 
@@ -84,6 +108,17 @@ export function SpreadsheetPanel() {
           </button>
         </div>
       </div>
+
+      <DeviceFilterBar
+        devices={devices}
+        onApply={handleApplyFilter}
+        onClear={handleClearFilter}
+        isApplying={refreshAction.isPending}
+        savedCriteria={savedCriteria}
+        onSave={handleSaveFilter}
+        onClearSaved={handleClearSavedFilter}
+        isSaving={saveFilterAction.isPending}
+      />
 
       {!data ? (
         <div className="card">

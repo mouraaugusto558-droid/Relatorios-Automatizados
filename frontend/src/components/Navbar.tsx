@@ -4,6 +4,7 @@ import {
   CalendarClock,
   FileSpreadsheet,
   Table2,
+  UserX,
   Moon,
   Sun,
   RotateCw,
@@ -17,13 +18,14 @@ import { useAuth } from "../context/AuthContext";
 import { StatusPill } from "./StatusPill";
 import { formatPhoneNumber } from "../utils/formatDateTime";
 
-export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports" | "spreadsheet";
+export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports" | "spreadsheet" | "exclusion";
 
 interface NavbarProps {
   activeTab: TabId;
   onSelectTab: (tab: TabId) => void;
   jobsCount?: number;
   reportsCount?: number;
+  excludedCount?: number;
   onRefreshAll?: () => void;
   isRefreshing?: boolean;
 }
@@ -33,6 +35,7 @@ export function Navbar({
   onSelectTab,
   jobsCount = 0,
   reportsCount = 0,
+  excludedCount = 0,
   onRefreshAll,
   isRefreshing = false
 }: NavbarProps) {
@@ -196,6 +199,15 @@ export function Navbar({
         >
           <Table2 size={17} />
           <span>Planilha</span>
+        </button>
+
+        <button
+          className={`tab-button ${activeTab === "exclusion" ? "active" : ""}`}
+          onClick={() => onSelectTab("exclusion")}
+        >
+          <UserX size={17} />
+          <span>Excluir Clientes</span>
+          {excludedCount > 0 && <span className="tab-counter">{excludedCount}</span>}
         </button>
       </nav>
     </header>

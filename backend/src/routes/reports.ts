@@ -4,9 +4,12 @@ import { getDatabase } from "../database";
 import { createRepositories } from "../database/repositories";
 import { getOtodataClient } from "../services/otodata";
 import { buildAlarmsSpreadsheet, buildFillsSpreadsheet } from "../services/reports/spreadsheetView";
+import { filterDevices, parseFilterQuery } from "../services/reports/deviceFilters";
 
 export async function reportsRoutes(app: FastifyInstance): Promise<void> {
-  const { reports: reportsRepository } = createRepositories(getDatabase());
+  const { reports: reportsRepository, excludedDevices: excludedDevicesRepository } = createRepositories(
+    getDatabase()
+  );
 
   app.get("/api/reports", async () => reportsRepository.list());
 
@@ -22,10 +25,19 @@ export async function reportsRoutes(app: FastifyInstance): Promise<void> {
     return reply.send(fs.createReadStream(report.filePath));
   });
 
-  app.get("/api/reports/spreadsheet", async () => {
-    const devices = await getOtodataClient().getDevices();
+  app.get("/api/reports/spreadsheet", async (request) => {
+    const allDevices = await getOtodataClient().getDevices();
+
+    const excludedIds = excludedDevicesRepository.getExcludedIds();
+    const activeDevices = allDevices.filter((device) => !excludedIds.has(device.Id));
+
+    const criteria = parseFilterQuery(request.query as Record<string, string | undefined>);
+    const devices = filterDevices(activeDevices, criteria);
+
     return {
       generatedAt: new Date().toISOString(),
+      totalDevices: activeDevices.length,
+      filteredDevices: devices.length,
       alarms: buildAlarmsSpreadsheet(devices),
       fills: buildFillsSpreadsheet(devices)
     };

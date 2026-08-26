@@ -2,7 +2,8 @@ import type { FastifyInstance } from "fastify";
 import { env } from "../config/env";
 import { getDatabase } from "../database";
 import { createRepositories } from "../database/repositories";
-import { REPORT_RECIPIENT_KEY } from "../database/repositories/settingsRepository";
+import { REPORT_RECIPIENT_KEY, REPORT_FILTER_CRITERIA_KEY } from "../database/repositories/settingsRepository";
+import { sanitizeCriteria, type DeviceFilterCriteria } from "../services/reports/deviceFilters";
 
 interface UpdateRecipientBody {
   phoneNumber: string;
@@ -23,5 +24,16 @@ export async function settingsRoutes(app: FastifyInstance): Promise<void> {
 
     settingsRepository.set(REPORT_RECIPIENT_KEY, digits);
     return { phoneNumber: digits };
+  });
+
+  app.get("/api/settings/report-filter", async () => {
+    const raw = settingsRepository.get(REPORT_FILTER_CRITERIA_KEY);
+    return { criteria: raw ? (JSON.parse(raw) as DeviceFilterCriteria) : {} };
+  });
+
+  app.put<{ Body: DeviceFilterCriteria }>("/api/settings/report-filter", async (request) => {
+    const criteria = sanitizeCriteria(request.body);
+    settingsRepository.set(REPORT_FILTER_CRITERIA_KEY, JSON.stringify(criteria));
+    return { criteria };
   });
 }
