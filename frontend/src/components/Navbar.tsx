@@ -5,6 +5,7 @@ import {
   FileSpreadsheet,
   Table2,
   UserX,
+  Bell,
   Moon,
   Sun,
   RotateCw,
@@ -18,7 +19,7 @@ import { useAuth } from "../context/AuthContext";
 import { StatusPill } from "./StatusPill";
 import { formatPhoneNumber } from "../utils/formatDateTime";
 
-export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports" | "spreadsheet" | "exclusion";
+export type TabId = "dashboard" | "whatsapp" | "jobs" | "reports" | "spreadsheet" | "exclusion" | "alerts";
 
 interface NavbarProps {
   activeTab: TabId;
@@ -26,6 +27,7 @@ interface NavbarProps {
   jobsCount?: number;
   reportsCount?: number;
   excludedCount?: number;
+  alertsCount?: number;
   onRefreshAll?: () => void;
   isRefreshing?: boolean;
 }
@@ -36,6 +38,7 @@ export function Navbar({
   jobsCount = 0,
   reportsCount = 0,
   excludedCount = 0,
+  alertsCount = 0,
   onRefreshAll,
   isRefreshing = false
 }: NavbarProps) {
@@ -208,6 +211,15 @@ export function Navbar({
           <UserX size={17} />
           <span>Excluir Clientes</span>
           {excludedCount > 0 && <span className="tab-counter">{excludedCount}</span>}
+        </button>
+
+        <button
+          className={`tab-button ${activeTab === "alerts" ? "active" : ""}`}
+          onClick={() => onSelectTab("alerts")}
+        >
+          <Bell size={17} />
+          <span>Alertas</span>
+          {alertsCount > 0 && <span className="tab-counter">{alertsCount}</span>}
         </button>
       </nav>
     </header>

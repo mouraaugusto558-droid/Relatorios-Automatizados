@@ -24,6 +24,17 @@ export async function whatsappRoutes(app: FastifyInstance): Promise<void> {
 
   app.get("/api/whatsapp/status", async () => toPayload(manager.getStatus()));
 
+  app.get("/api/whatsapp/groups", async () => {
+    if (manager.getStatus().status !== "connected") {
+      return { connected: false, groups: [] };
+    }
+    try {
+      return { connected: true, groups: await manager.listGroups() };
+    } catch {
+      return { connected: true, groups: [] };
+    }
+  });
+
   app.post("/api/whatsapp/connect", async () => {
     await manager.connect();
     return toPayload(manager.getStatus());

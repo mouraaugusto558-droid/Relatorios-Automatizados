@@ -11,15 +11,18 @@ import { JobsPanel } from "./components/JobsPanel";
 import { ReportsPanel } from "./components/ReportsPanel";
 import { SpreadsheetPanel } from "./components/SpreadsheetPanel";
 import { ExclusionPanel } from "./components/ExclusionPanel";
+import { AlertsPanel } from "./components/AlertsPanel";
 import { ToastContainer } from "./components/ToastContainer";
 import { useReports } from "./hooks/useReports";
 import { useExcludedDevices } from "./hooks/useExcludedDevices";
+import { useAlertHistory } from "./hooks/useAlertHistory";
 
 function MainApp() {
   const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const { jobs, refreshJobs, refreshHealth } = useAppData();
   const { reports, refresh: refreshReports } = useReports();
   const { excludedList, refresh: refreshExcludedDevices } = useExcludedDevices();
+  const { history: alertHistory, refresh: refreshAlertHistory } = useAlertHistory();
   const { success } = useToast();
 
   const [isRefreshingAll, setIsRefreshingAll] = useState(false);
@@ -27,12 +30,18 @@ function MainApp() {
   const handleRefreshAll = useCallback(async () => {
     setIsRefreshingAll(true);
     try {
-      await Promise.allSettled([refreshJobs(), refreshReports(), refreshHealth(), refreshExcludedDevices()]);
+      await Promise.allSettled([
+        refreshJobs(),
+        refreshReports(),
+        refreshHealth(),
+        refreshExcludedDevices(),
+        refreshAlertHistory()
+      ]);
       success("Painel atualizado", "Todos os dados foram sincronizados com o servidor.");
     } finally {
       setIsRefreshingAll(false);
     }
-  }, [refreshJobs, refreshReports, refreshHealth, refreshExcludedDevices, success]);
+  }, [refreshJobs, refreshReports, refreshHealth, refreshExcludedDevices, refreshAlertHistory, success]);
 
   return (
     <div className="app-container">
@@ -42,6 +51,7 @@ function MainApp() {
         jobsCount={jobs.length}
         reportsCount={reports.length}
         excludedCount={excludedList.length}
+        alertsCount={alertHistory.length}
         onRefreshAll={handleRefreshAll}
         isRefreshing={isRefreshingAll}
       />
@@ -53,6 +63,7 @@ function MainApp() {
         {activeTab === "reports" && <ReportsPanel />}
         {activeTab === "spreadsheet" && <SpreadsheetPanel />}
         {activeTab === "exclusion" && <ExclusionPanel />}
+        {activeTab === "alerts" && <AlertsPanel />}
       </main>
 
       <ToastContainer />

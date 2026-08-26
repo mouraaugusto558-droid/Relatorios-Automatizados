@@ -14,35 +14,50 @@ import {
 } from "lucide-react";
 import { useAppData } from "../context/AppDataContext";
 import { useApiAction } from "../hooks/useApiAction";
-import { useReportRecipient } from "../hooks/useReportRecipient";
+import { useRecipient, type Recipient } from "../hooks/useRecipient";
+import { useWhatsAppGroups } from "../hooks/useWhatsAppGroups";
 import { apiPost, ApiError } from "../api/client";
 import { ConfirmModal } from "./ConfirmModal";
+import { RecipientPicker } from "./RecipientPicker";
 import {
   formatDateTime,
   formatPhoneNumber,
   formatRelativeTime
 } from "../utils/formatDateTime";
 
+function describeRecipient(recipient: Recipient, groups: { id: string; name: string }[]): string {
+  if (recipient.type === "individual") return formatPhoneNumber(recipient.number);
+  const group = groups.find((g) => g.id === recipient.groupId);
+  return `Grupo "${group?.name ?? recipient.groupId}"`;
+}
+
+function isEmptyRecipient(recipient: Recipient | null): boolean {
+  if (!recipient) return true;
+  if (recipient.type === "individual") return recipient.number.replace(/\D/g, "") === "";
+  return recipient.groupId === "";
+}
+
 function ReportRecipientCard() {
-  const { phoneNumber, update } = useReportRecipient();
-  const [draft, setDraft] = useState("");
+  const { recipient, save } = useRecipient("report-recipient");
+  const { groups, connected: groupsConnected, isLoading: isLoadingGroups, refresh: refreshGroups } = useWhatsAppGroups();
+  const [draft, setDraft] = useState<Recipient | null>(null);
 
   useEffect(() => {
-    if (phoneNumber) setDraft(phoneNumber);
-  }, [phoneNumber]);
+    if (recipient) setDraft(recipient);
+  }, [recipient]);
 
-  const saveAction = useApiAction((value: string) => update(value), {
+  const saveAction = useApiAction((value: Recipient) => save(value), {
     success: () => ({
-      title: "Número atualizado",
-      message: "Os próximos relatórios serão enviados para este número."
+      title: "Destinatário atualizado",
+      message: "Os próximos relatórios serão enviados para este destinatário."
     }),
     error: (err) =>
       err instanceof ApiError && err.status === 400
-        ? { title: "Número inválido", message: "Informe um número válido com DDI e DDD (ex: 5511999999999)." }
-        : { title: "Erro de comunicação", message: "Não foi possível salvar o número." }
+        ? { title: "Destinatário inválido", message: "Informe um número válido (com DDI e DDD) ou selecione um grupo." }
+        : { title: "Erro de comunicação", message: "Não foi possível salvar o destinatário." }
   });
 
-  const isDirty = draft.replace(/\D/g, "") !== (phoneNumber ?? "");
+  const isDirty = JSON.stringify(draft) !== JSON.stringify(recipient);
 
   return (
     <div className="card">
@@ -51,33 +66,30 @@ function ReportRecipientCard() {
           <Send size={24} />
         </div>
         <div>
-          <h2 className="wa-title">Número de Destino dos Relatórios</h2>
-          <p className="wa-subtitle">
-            Número de WhatsApp (com DDI e DDD, só dígitos) que recebe os relatórios diários automaticamente.
-          </p>
+          <h2 className="wa-title">Destinatário dos Relatórios</h2>
+          <p className="wa-subtitle">Número de WhatsApp ou grupo que recebe os relatórios diários automaticamente.</p>
         </div>
       </div>
 
-      <div className="flex-row-wrap gap-075">
-        <input
-          type="text"
-          className="input-text"
-          style={{ paddingLeft: "0.85rem", flex: "1 1 260px", maxWidth: "340px" }}
-          placeholder="Ex: 5511999999999"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <button
-          className="btn btn-primary btn-sm"
-          onClick={() => void saveAction.run(draft)}
-          disabled={saveAction.isPending || !isDirty || draft.trim() === ""}
-        >
-          <CheckCircle2 size={15} className={saveAction.isPending ? "spinner" : ""} />
-          {saveAction.isPending ? "Salvando..." : "Salvar"}
-        </button>
-      </div>
+      <RecipientPicker
+        value={draft}
+        onChange={setDraft}
+        groups={groups}
+        groupsConnected={groupsConnected}
+        isLoadingGroups={isLoadingGroups}
+        onRefreshGroups={() => void refreshGroups()}
+      />
 
-      {phoneNumber && <p className="wa-muted-note mt-050">Atual: {formatPhoneNumber(phoneNumber)}</p>}
+      <button
+        className="btn btn-primary btn-sm mt-075"
+        onClick={() => draft && void saveAction.run(draft)}
+        disabled={saveAction.isPending || !isDirty || isEmptyRecipient(draft)}
+      >
+        <CheckCircle2 size={15} className={saveAction.isPending ? "spinner" : ""} />
+        {saveAction.isPending ? "Salvando..." : "Salvar"}
+      </button>
+
+      {recipient && <p className="wa-muted-note mt-050">Atual: {describeRecipient(recipient, groups)}</p>}
     </div>
   );
 }

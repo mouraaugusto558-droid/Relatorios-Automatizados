@@ -2,6 +2,8 @@ import type { DatabaseSync } from "node:sqlite";
 
 export const REPORT_RECIPIENT_KEY = "report_recipient_number";
 export const REPORT_FILTER_CRITERIA_KEY = "report_filter_criteria";
+export const ALERT_RECIPIENT_KEY = "alert_recipient";
+export const ALERT_TRIGGER_CRITERIA_KEY = "alert_trigger_criteria";
 
 export interface SettingsRepository {
   get(key: string): string | undefined;

@@ -3,7 +3,7 @@ import { statusMeta, formatLevel, deviceLabel, getAlarms, getFills } from "./dev
 
 const DIVIDER = "──────────────────";
 
-function formatDateTime(date: Date): string {
+export function formatDateTime(date: Date): string {
   const datePart = date.toLocaleDateString("pt-BR", {
     day: "2-digit",
     month: "2-digit",

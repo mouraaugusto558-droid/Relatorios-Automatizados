@@ -16,6 +16,11 @@ export interface WhatsAppStatus {
   lastEventAt: string | null;
 }
 
+export interface WhatsAppGroup {
+  id: string;
+  name: string;
+}
+
 export interface WhatsAppManager {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
@@ -25,6 +30,7 @@ export interface WhatsAppManager {
   sendMessage(jid: string, text: string): Promise<void>;
   sendImage(jid: string, image: Buffer, caption?: string): Promise<void>;
   sendDocument(jid: string, document: Buffer, fileName: string, mimetype: string): Promise<void>;
+  listGroups(): Promise<WhatsAppGroup[]>;
 }
 
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -187,6 +193,16 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
       }
       const content: AnyMessageContent = { document, fileName, mimetype };
       await socket.sendMessage(jid, content);
+    },
+
+    async listGroups(): Promise<WhatsAppGroup[]> {
+      if (!socket || status !== "connected") {
+        throw new Error("WhatsApp não está conectado");
+      }
+      const groups = await socket.groupFetchAllParticipating();
+      return Object.values(groups)
+        .map((group) => ({ id: group.id, name: group.subject }))
+        .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     }
   };
 }

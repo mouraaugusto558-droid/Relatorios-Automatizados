@@ -13,6 +13,7 @@ import { jobsRoutes } from "./routes/jobs";
 import { reportsRoutes } from "./routes/reports";
 import { settingsRoutes } from "./routes/settings";
 import { devicesRoutes } from "./routes/devices";
+import { alertsRoutes } from "./routes/alerts";
 import { getWhatsAppManager } from "./services/whatsapp";
 import { getScheduler } from "./jobs";
 import { getAuthService, SESSION_COOKIE_NAME } from "./services/auth";
@@ -66,6 +67,7 @@ async function main(): Promise<void> {
   await app.register(reportsRoutes);
   await app.register(settingsRoutes);
   await app.register(devicesRoutes);
+  await app.register(alertsRoutes);
 
   const frontendDist = path.resolve(__dirname, "..", "..", "frontend", "dist");
   if (fs.existsSync(frontendDist)) {

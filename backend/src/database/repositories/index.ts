@@ -7,6 +7,11 @@ import {
   createExcludedDevicesRepository,
   type ExcludedDevicesRepository
 } from "./excludedDevicesRepository";
+import {
+  createDeviceSnapshotsRepository,
+  type DeviceSnapshotsRepository
+} from "./deviceSnapshotsRepository";
+import { createAlertHistoryRepository, type AlertHistoryRepository } from "./alertHistoryRepository";
 
 export interface Repositories {
   jobs: JobsRepository;
@@ -14,6 +19,8 @@ export interface Repositories {
   reports: ReportsRepository;
   settings: SettingsRepository;
   excludedDevices: ExcludedDevicesRepository;
+  deviceSnapshots: DeviceSnapshotsRepository;
+  alertHistory: AlertHistoryRepository;
 }
 
 /**
@@ -28,6 +35,8 @@ export function createRepositories(database: DatabaseSync): Repositories {
     jobRuns: createJobRunsRepository(database),
     reports: createReportsRepository(database),
     settings: createSettingsRepository(database),
-    excludedDevices: createExcludedDevicesRepository(database)
+    excludedDevices: createExcludedDevicesRepository(database),
+    deviceSnapshots: createDeviceSnapshotsRepository(database),
+    alertHistory: createAlertHistoryRepository(database)
   };
 }

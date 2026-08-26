@@ -12,6 +12,7 @@ import { createExcludedDevicesRepository } from "../../database/repositories/exc
 import { createServiceLogger } from "../../utils/logger";
 import { getOtodataClient } from "../otodata";
 import { getWhatsAppManager } from "../whatsapp";
+import { parseRecipient, buildRecipientJid } from "../whatsapp/recipient";
 import { buildDailyReportText } from "./dailyReport";
 import { buildAlarmsSpreadsheet, buildFillsSpreadsheet, type SpreadsheetTable } from "./spreadsheetView";
 import { renderSpreadsheetImage } from "./renderSpreadsheetImage";
@@ -34,8 +35,10 @@ async function sendSpreadsheetImages(jid: string, tables: SpreadsheetTable[]): P
 
 export async function runDailyReport(): Promise<void> {
   const settingsRepository = createSettingsRepository(getDatabase());
-  const recipientNumber = settingsRepository.get(REPORT_RECIPIENT_KEY) ?? env.reportRecipientNumber;
-  if (!recipientNumber) {
+  const recipient =
+    parseRecipient(settingsRepository.get(REPORT_RECIPIENT_KEY)) ??
+    (env.reportRecipientNumber ? { type: "individual" as const, number: env.reportRecipientNumber } : null);
+  if (!recipient) {
     throw new Error("Número de destino dos relatórios não configurado");
   }
 
@@ -61,7 +64,7 @@ export async function runDailyReport(): Promise<void> {
   const reportsRepository = createReportsRepository(getDatabase());
   const reportId = reportsRepository.create(fileName, filePath, "generated");
 
-  const jid = `${recipientNumber}@s.whatsapp.net`;
+  const jid = buildRecipientJid(recipient);
   try {
     await getWhatsAppManager().sendMessage(jid, reportText);
     reportsRepository.updateStatus(reportId, "sent");
