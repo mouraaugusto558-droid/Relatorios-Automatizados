@@ -4,6 +4,8 @@ export const REPORT_RECIPIENT_KEY = "report_recipient_number";
 export const REPORT_FILTER_CRITERIA_KEY = "report_filter_criteria";
 export const ALERT_RECIPIENT_KEY = "alert_recipient";
 export const ALERT_TRIGGER_CRITERIA_KEY = "alert_trigger_criteria";
+export const DAILY_SUMMARY_HIGH_CRITERIA_KEY = "daily_summary_high_criteria";
+export const DAILY_SUMMARY_LOW_CRITERIA_KEY = "daily_summary_low_criteria";
 
 export interface SettingsRepository {
   get(key: string): string | undefined;

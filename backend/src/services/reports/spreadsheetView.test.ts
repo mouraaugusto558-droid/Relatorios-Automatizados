@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import type { OtodataDevice } from "../otodata";
-import { buildAlarmsSpreadsheet, buildFillsSpreadsheet, MAX_ROWS_PER_PAGE } from "./spreadsheetView";
+import { buildAlarmsSpreadsheet, buildFillsSpreadsheet, buildLevelSummarySpreadsheet, MAX_ROWS_PER_PAGE } from "./spreadsheetView";
 
 function device(overrides: Partial<OtodataDevice>): OtodataDevice {
   return {
@@ -53,6 +53,20 @@ test("buildAlarmsSpreadsheet: paginates in chunks of MAX_ROWS_PER_PAGE and label
   assert.equal(tables[1].rows.length, 5);
   assert.match(tables[0].title, /\(1\/2\)$/);
   assert.match(tables[1].title, /\(2\/2\)$/);
+});
+
+test("buildLevelSummarySpreadsheet: shows exactly what was passed in, no re-filtering by ALARM_STATUSES", () => {
+  const devices = [
+    device({ Id: 1, Name: "Fora do padrão de alarme", Status: "OK", LastLevel: 0.95 }),
+    device({ Id: 2, Name: "Nível alto", Status: "HIGH ALARM", LastLevel: 0.92 })
+  ];
+
+  const tables = buildLevelSummarySpreadsheet(devices, "🔴 Nível alto (2)");
+
+  assert.equal(tables[0].title, "🔴 Nível alto (2)");
+  assert.equal(tables[0].rows.length, 2);
+  assert.equal(tables[0].rows[0].cells[0], "Fora do padrão de alarme");
+  assert.equal(tables[0].rows[1].cells[0], "Nível alto");
 });
 
 test("buildFillsSpreadsheet: includes only FILL DETECTION devices", () => {

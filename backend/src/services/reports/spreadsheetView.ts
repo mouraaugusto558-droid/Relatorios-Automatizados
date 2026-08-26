@@ -83,6 +83,30 @@ export function buildAlarmsSpreadsheet(devices: OtodataDevice[]): SpreadsheetTab
   return buildTables(`🚨 Alarmes ativos (${alarms.length})`, ALARM_COLUMNS, rows);
 }
 
+/**
+ * Mesmo formato de `buildAlarmsSpreadsheet`, mas recebe a lista já
+ * filtrada por quem chama (não passa por `getAlarms()`) — usada pelo
+ * resumo diário de nível alto/baixo, onde o critério (status + faixa de
+ * nível) já foi aplicado via `filterDevices` antes de chegar aqui.
+ */
+export function buildLevelSummarySpreadsheet(devices: OtodataDevice[], title: string): SpreadsheetTable[] {
+  const rows: SpreadsheetRow[] = devices.map((device) => {
+    const meta = statusMeta(device.Status);
+    return {
+      cells: [
+        device.Name ?? `Tanque #${device.Id}`,
+        device.City ?? "—",
+        meta.label || device.Status,
+        formatLevel(device.LastLevel),
+        device.BatteryAlarm ? "Fraca" : "OK"
+      ],
+      color: meta.color
+    };
+  });
+
+  return buildTables(title, ALARM_COLUMNS, rows);
+}
+
 export function buildFillsSpreadsheet(devices: OtodataDevice[]): SpreadsheetTable[] {
   const fills = getFills(devices);
   const rows: SpreadsheetRow[] = fills.map((device) => {

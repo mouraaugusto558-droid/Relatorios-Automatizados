@@ -13,18 +13,26 @@ export interface AlertTriggerConfig {
 }
 
 /**
- * Sem configuração salva, o monitoramento não manda nada — só popula o
- * snapshot. Evita alertar "tudo" antes do usuário decidir o que é crítico
- * pra ele.
+ * Sem configuração salva, já sai valendo o exemplo original do cliente
+ * ("crítico alto + nível 90") — mesmo raciocínio de `DEFAULT_HIGH_CRITERIA`
+ * em `dailySummary.ts`: como existe um valor claro e específico pedido por
+ * ele, não faz sentido começar vazio e obrigar alguém a configurar antes de
+ * funcionar. Continua editável a qualquer momento pela aba Alertas.
  */
 export const DEFAULT_ALERT_CONFIG: AlertTriggerConfig = {
-  criteria: {},
+  criteria: { statuses: ["HIGH ALARM"], levelMin: 90 },
   notifyOnFill: false,
   notifyOnResolve: false
 };
 
+/** Usado só quando `sanitizeAlertConfig` recebe algo que não é um objeto —
+ * um corpo de requisição realmente inválido não deve virar o preset do
+ * cliente "por acidente", só um estado em branco (mesma lógica de
+ * `sanitizeCriteria`, que devolve `{}` em vez de qualquer valor de negócio). */
+const BLANK_ALERT_CONFIG: AlertTriggerConfig = { criteria: {}, notifyOnFill: false, notifyOnResolve: false };
+
 export function sanitizeAlertConfig(input: unknown): AlertTriggerConfig {
-  if (!input || typeof input !== "object") return DEFAULT_ALERT_CONFIG;
+  if (!input || typeof input !== "object") return BLANK_ALERT_CONFIG;
   const obj = input as Record<string, unknown>;
 
   return {

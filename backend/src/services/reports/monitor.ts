@@ -1,16 +1,19 @@
 import { getDatabase } from "../../database";
-import { createSettingsRepository, REPORT_FILTER_CRITERIA_KEY, REPORT_RECIPIENT_KEY, ALERT_RECIPIENT_KEY, ALERT_TRIGGER_CRITERIA_KEY } from "../../database/repositories/settingsRepository";
-import { createExcludedDevicesRepository } from "../../database/repositories/excludedDevicesRepository";
+import {
+  createSettingsRepository,
+  REPORT_RECIPIENT_KEY,
+  ALERT_RECIPIENT_KEY,
+  ALERT_TRIGGER_CRITERIA_KEY
+} from "../../database/repositories/settingsRepository";
 import { createDeviceSnapshotsRepository, type DeviceSnapshot } from "../../database/repositories/deviceSnapshotsRepository";
 import { createAlertHistoryRepository } from "../../database/repositories/alertHistoryRepository";
-import { getOtodataClient } from "../otodata";
 import type { OtodataDevice } from "../otodata";
 import { getWhatsAppManager } from "../whatsapp";
 import { parseRecipient, buildRecipientJid } from "../whatsapp/recipient";
-import { filterDevices, sanitizeCriteria } from "./deviceFilters";
 import { sanitizeAlertConfig, DEFAULT_ALERT_CONFIG } from "./alertConfig";
 import { classifyTransitions } from "./deviceTransitions";
 import { buildAlertMessage, summarizeTransitions } from "./alertMessage";
+import { getMonitoredDevices } from "./monitoredScope";
 
 function toSnapshot(device: OtodataDevice): DeviceSnapshot {
   return {
@@ -33,21 +36,10 @@ function toSnapshot(device: OtodataDevice): DeviceSnapshot {
 export async function checkForCriticalUpdates(): Promise<void> {
   const database = getDatabase();
   const settingsRepository = createSettingsRepository(database);
-  const excludedDevicesRepository = createExcludedDevicesRepository(database);
   const snapshotsRepository = createDeviceSnapshotsRepository(database);
   const alertHistoryRepository = createAlertHistoryRepository(database);
 
-  const allDevices = await getOtodataClient().getDevices();
-  if (!Array.isArray(allDevices)) {
-    throw new Error("Resposta inesperada da API Otodata (esperava uma lista de dispositivos)");
-  }
-
-  const excludedIds = excludedDevicesRepository.getExcludedIds();
-  const activeDevices = allDevices.filter((device) => !excludedIds.has(device.Id));
-
-  const savedFilterRaw = settingsRepository.get(REPORT_FILTER_CRITERIA_KEY);
-  const scopeCriteria = sanitizeCriteria(savedFilterRaw ? JSON.parse(savedFilterRaw) : {});
-  const monitoredDevices = filterDevices(activeDevices, scopeCriteria);
+  const monitoredDevices = await getMonitoredDevices();
 
   const savedAlertConfigRaw = settingsRepository.get(ALERT_TRIGGER_CRITERIA_KEY);
   const alertConfig = savedAlertConfigRaw ? sanitizeAlertConfig(JSON.parse(savedAlertConfigRaw)) : DEFAULT_ALERT_CONFIG;
