@@ -1,5 +1,11 @@
 # Build do backend a partir da raiz do monorepo (npm workspaces).
 # O frontend NÃO entra nesta imagem — ele é publicado separadamente na Vercel.
+#
+# Rebuild forçado em 2026-09-01: a imagem do EasyPanel
+# (easypanel/exclusiveodontologia/relatoriointerno-nanda:latest) sumiu do
+# Docker da VPS ("No such image"). Como o commit não mudava, o EasyPanel
+# pulava o build e tentava rodar a imagem inexistente. Este commit muda o
+# contexto de build só para disparar uma reconstrução limpa.
 
 FROM node:24-bookworm-slim AS build
 WORKDIR /app
