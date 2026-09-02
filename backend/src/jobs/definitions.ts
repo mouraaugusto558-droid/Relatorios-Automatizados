@@ -26,6 +26,18 @@ export function createJobDefinitions(_logger: Logger): JobDefinition[] {
       name: "Resumo diário — nível alto e baixo (08:30)",
       cronExpression: "30 8 * * *",
       run: runCriticalLevelsSummary
+    },
+    {
+      // TEMPORÁRIO — 2ª rodada do teste do agendador, agora com o `sharp`
+      // instalado: a 1ª provou que o cron dispara sozinho, mas as imagens saíam
+      // sem miniatura porque nenhuma biblioteca de imagem existia no container.
+      //
+      // DESLIGAR assim que confirmar texto + as 2 imagens chegando: botão de
+      // ativar/desativar na aba Jobs, ou remover esta entrada e publicar.
+      id: "teste-agendador-2min",
+      name: "TESTE — relatório a cada 2 min (desligar após o teste)",
+      cronExpression: "*/2 * * * *",
+      run: runDailyReport
     }
   ];
 }
