@@ -18,3 +18,6 @@ Thumbs.db
 
 # cache do ESLint (gerado localmente, não precisa ir para o git)
 .eslintcache
+
+# dump do codigo-fonte gerado localmente, nao faz parte do projeto
+MeuNovoProjeto-codigo-fonte.zip

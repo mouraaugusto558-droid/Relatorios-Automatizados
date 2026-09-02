@@ -1,0 +1,38 @@
+{
+  "name": "Relatorios-Automatizados",
+
+  // Base estavel + features oficiais. O Node vem da feature (nao da tag da
+  // imagem) para casar exatamente com o engines do package.json (>=24 <25).
+  "image": "mcr.microsoft.com/devcontainers/base:bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "24" },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+
+  // Instala o CLI da Fly e as dependencias do projeto. Roda uma vez, na
+  // criacao do Codespace (leva alguns minutos; depois disso o ambiente
+  // reabre em segundos).
+  "postCreateCommand": "curl -L https://fly.io/install.sh | sh && npm ci",
+
+  "remoteEnv": {
+    "PATH": "/home/vscode/.fly/bin:${containerEnv:PATH}"
+  },
+
+  // 3000 = API (backend), 5173 = painel em modo dev (Vite).
+  "forwardPorts": [3000, 5173],
+  "portsAttributes": {
+    "3000": { "label": "API (backend)" },
+    "5173": { "label": "Painel (frontend dev)" }
+  },
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}

@@ -18,7 +18,12 @@ function cookieOptions() {
 }
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
-  app.post<{ Body: LoginBody }>("/api/auth/login", async (request, reply) => {
+  // O painel tem um único usuário e senha, exposto na internet: sem limite,
+  // dá para tentar senhas indefinidamente. 10 tentativas a cada 5 minutos por
+  // IP é folgado para quem erra a senha e inviável para força bruta.
+  app.post<{ Body: LoginBody }>("/api/auth/login", {
+    config: { rateLimit: { max: 10, timeWindow: "5 minutes" } }
+  }, async (request, reply) => {
     const { username, password } = request.body ?? {};
     if (!username || !password) {
       return reply.code(400).send({ error: "username_password_required" });

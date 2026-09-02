@@ -4,6 +4,8 @@ import Fastify from "fastify";
 import fastifyStatic from "@fastify/static";
 import fastifyCookie from "@fastify/cookie";
 import fastifyCors from "@fastify/cors";
+import fastifyHelmet from "@fastify/helmet";
+import fastifyRateLimit from "@fastify/rate-limit";
 import { env } from "./config/env";
 import { loggerOptions } from "./utils/logger";
 import { healthRoutes } from "./routes/health";
@@ -24,7 +26,11 @@ import { getAuthService, SESSION_COOKIE_NAME } from "./services/auth";
 const PUBLIC_API_PATHS = new Set(["/api/health", "/api/auth/login", "/api/auth/logout", "/api/auth/me"]);
 
 async function main(): Promise<void> {
-  const app = Fastify({ logger: loggerOptions });
+  // trustProxy: em produção o app fica atrás do proxy da Fly, então
+  // request.ip só é o IP real do cliente (e não o do proxy) lendo o
+  // X-Forwarded-For. Sem isso o rate limit do login contaria todo mundo como
+  // um único IP — um atacante travaria o login de todos.
+  const app = Fastify({ logger: loggerOptions, trustProxy: env.isProduction });
 
   // Rede de segurança do processo: isto é um serviço de longa duração (scheduler +
   // WhatsApp) e não deve morrer por causa de uma rejeição/exceção que escapou de
@@ -36,6 +42,21 @@ async function main(): Promise<void> {
   process.on("uncaughtException", (error) => {
     app.log.error(error, "uncaughtException não tratada");
   });
+
+  // Cabeçalhos de segurança (HSTS, X-Frame-Options, X-Content-Type-Options,
+  // Referrer-Policy...). CSP fica desligada: isto é uma API JSON, e o painel
+  // é servido pela Vercel, que tem a própria política. CORP precisa ser
+  // "cross-origin" porque front e back ficam em domínios diferentes.
+  await app.register(fastifyHelmet, {
+    contentSecurityPolicy: false,
+    crossOriginEmbedderPolicy: false,
+    crossOriginResourcePolicy: { policy: "cross-origin" }
+  });
+
+  // Registrado com global:false — o limite vale só onde a rota pedir
+  // explicitamente (hoje: o login). Um limite global atrapalharia o polling
+  // de status do WhatsApp que o painel faz.
+  await app.register(fastifyRateLimit, { global: false });
 
   if (env.corsAllowedOrigin) {
     // Default do @fastify/cors é só "GET,HEAD,POST" — sem isso, qualquer rota

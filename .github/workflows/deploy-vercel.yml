@@ -1,0 +1,59 @@
+# Publica o FRONTEND (painel) na Vercel a cada push na develop.
+#
+# A pasta frontend/.vercel/ e ignorada pelo git, entao os dois IDs abaixo
+# precisam ser guardados como secrets. Passando VERCEL_ORG_ID, o CLI resolve o
+# escopo certo sozinho — e o "--scope" do deploy manual deixa de ser necessario.
+#
+# Configurar uma vez (GitHub -> Settings -> Secrets and variables -> Actions):
+#   VERCEL_TOKEN        <- vercel.com/account/tokens
+#   VERCEL_ORG_ID       <- "orgId" de frontend/.vercel/project.json
+#   VERCEL_PROJECT_ID   <- "projectId" de frontend/.vercel/project.json
+#
+# VITE_API_BASE_URL nao entra aqui: e variavel de build do projeto na Vercel
+# (Project -> Settings -> Environment Variables), lida no build remoto.
+name: Deploy frontend (Vercel)
+
+on:
+  push:
+    branches: [develop]
+    paths:
+      - "frontend/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/deploy-vercel.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: vercel-deploy
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+
+  deploy:
+    name: Deploy
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # O build acontece na Vercel (igual ao deploy manual de hoje), para que
+      # as variaveis de ambiente configuradas la sejam aplicadas.
+      - name: Publicar em producao
+        working-directory: frontend
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel@latest deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }}

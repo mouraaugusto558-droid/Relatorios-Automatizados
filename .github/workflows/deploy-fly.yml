@@ -1,0 +1,54 @@
+# Publica o BACKEND na Fly.io a cada push na develop.
+#
+# A Fly.io nao tem "conectar repositorio" para deploy continuo: o caminho
+# oficial e este workflow.
+#
+# Configurar uma vez (GitHub -> Settings -> Secrets and variables -> Actions):
+#   FLY_API_TOKEN   <- fly tokens create deploy -x 8760h --app meu-novo-projeto-api
+#                      (copiar a saida INTEIRA, incluindo o "FlyV1 " do comeco)
+name: Deploy backend (Fly.io)
+
+on:
+  push:
+    branches: [develop]
+    # So republica a API quando algo que entra na imagem muda.
+    paths:
+      - "backend/**"
+      - "Dockerfile"
+      - ".dockerignore"
+      - "fly.toml"
+      - "package.json"
+      - "package-lock.json"
+      - ".npmrc"
+      - ".github/workflows/deploy-fly.yml"
+  workflow_dispatch: # botao "Run workflow" na aba Actions
+
+# E 1 maquina e 1 volume: dois deploys simultaneos brigariam pelo mesmo volume.
+concurrency:
+  group: fly-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Testes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Mesmo comando que roda na maquina do desenvolvedor.
+      - run: npm run check
+
+  deploy:
+    name: Deploy
+    needs: test # sem testes verdes, nao publica
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

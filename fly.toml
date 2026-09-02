@@ -1,0 +1,58 @@
+app = "meu-novo-projeto-api"
+primary_region = "gru"
+
+[build]
+  dockerfile = "Dockerfile"
+
+# Deploy com volume attachado: "canary" e "bluegreen" NAO funcionam (exigem
+# subir uma maquina nova em paralelo, e o volume so atende uma maquina).
+# "immediate" atualiza a maquina no lugar — alguns segundos de downtime.
+[deploy]
+  strategy = "immediate"
+
+# Estas variaveis NAO sao segredo, entao ficam versionadas aqui (secrets vao
+# em `fly secrets set`). Os tres caminhos *_PATH sao o item mais importante do
+# arquivo: por padrao o codigo grava em ./storage/ DENTRO do container, que e
+# recriado do zero a cada deploy. Apontando para /data (o volume app_data), o
+# banco, a sessao do WhatsApp e os relatorios sobrevivem aos deploys.
+[env]
+  HOST = "0.0.0.0"
+  NODE_ENV = "production"
+  TZ = "America/Sao_Paulo"
+  DATABASE_PATH = "/data/database.sqlite"
+  WHATSAPP_AUTH_PATH = "/data/whatsapp/auth"
+  REPORTS_PATH = "/data/reports"
+
+# Tamanho fixado de proposito: sem este bloco a Fly usa o padrao dela (1 GB),
+# que custa quase o dobro sem necessidade. 512 MB da folga para o Baileys, o
+# SQLite e a renderizacao PNG da planilha (@napi-rs/canvas). Se o app comecar
+# a ser morto por falta de memoria (OOM em `fly logs`), subir para "1gb".
+[[vm]]
+  cpu_kind = "shared"
+  cpus = 1
+  memory = "512mb"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  # O scheduler (croner) roda dentro do processo: se a maquina dormir, o job
+  # das 08:00 nao dispara. Por isso a maquina fica sempre ligada.
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+# Volume de 1 maquina / 1 regiao. Nao rodar `fly scale count 2`: a segunda
+# maquina nao consegue attachar o mesmo volume (e dois SQLite divergiriam).
+[[mounts]]
+  source = "app_data"
+  destination = "/data"
+
+[checks]
+  [checks.health]
+    type = "http"
+    port = 3000
+    method = "GET"
+    path = "/api/health"
+    interval = "15s"
+    timeout = "5s"
+    grace_period = "30s"

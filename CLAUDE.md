@@ -1,4 +1,8 @@
-# MeuNovoProjeto
+# Relatorios-Automatizados
+
+> Repositório renomeado de `MeuNovoProjeto` em 2026-09-02. A pasta local e o
+> `name` do `package.json` ainda usam o nome antigo — só o repositório no
+> GitHub mudou (`https://github.com/mouraaugusto558-droid/Relatorios-Automatizados`).
 
 Visão geral do que o sistema faz: `docs/como-o-sistema-funciona.md`.
 
@@ -27,21 +31,51 @@ externo adicional.
 
 ## Deploy
 
-- **Backend**: manual, numa VPS via EasyPanel (Docker/Linux). Quem aplica o
-  deploy é o usuário (`git pull` + rebuild do container) — não fazer isso a
-  menos que ele peça explicitamente.
-- **Frontend**: Vercel, projeto `frontend` no time `alvaro's projects`
-  (plano Hobby), linkado via `frontend/.vercel/project.json`. Deploy com:
+Backend na **Fly.io** (app `meu-novo-projeto-api`, `fly.toml` e `Dockerfile`
+na raiz), frontend na **Vercel**. Isso substitui o EasyPanel, que era o host
+anterior do backend. Branch de produção: `develop`.
 
-  ```
-  cd frontend
-  npx vercel --prod --yes --scope alvaros-projects-f99b9f96
-  ```
+### Caminho normal: push
 
-  Isso builda e já promove pra produção (`frontend-nine-psi-90.vercel.app`).
-  **Não é** disparado automaticamente por `git push` — este projeto não tem
-  webhook do GitHub configurado na Vercel, só builda quando alguém roda
-  `vercel deploy`/`--prod`.
+Cada push na `develop` dispara o workflow correspondente ao que mudou, roda
+`npm run check` (typecheck + testes) e só publica se passar:
+
+| Mudou | Workflow | Publica |
+|---|---|---|
+| `backend/`, `Dockerfile`, `fly.toml`, `package*.json` | `.github/workflows/deploy-fly.yml` | Fly.io |
+| `frontend/`, `package*.json` | `.github/workflows/deploy-vercel.yml` | Vercel |
+| só `docs/` ou `*.md` | nenhum | nada |
+
+Secrets necessários no GitHub (Settings → Secrets and variables → Actions):
+`FLY_API_TOKEN`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`. Os dois
+últimos saem de `frontend/.vercel/project.json`, que é ignorado pelo git.
+
+### Caminho manual (infra e depuração)
+
+```
+npm run check       # typecheck + 103 testes — portão de qualidade
+npm run deploy      # check + backend (Fly) + frontend (Vercel)
+npm run deploy:api  # só backend
+npm run deploy:web  # só frontend
+```
+
+O `deploy:web` embute o `--scope alvaros-projects-f99b9f96` por causa do gotcha
+descrito abaixo. Tarefas de infra (`fly volumes`, `fly secrets`, `fly logs`,
+`fly ssh console`) não têm equivalente no GitHub — são sempre terminal.
+
+### Persistência (não quebrar)
+
+O `fly.toml` monta o volume `app_data` em `/data` e o bloco `[env]` aponta
+`DATABASE_PATH`, `WHATSAPP_AUTH_PATH` e `REPORTS_PATH` para lá. Os defaults do
+código (`backend/src/config/env.ts`) são `./storage/...`, **dentro do container
+descartável** — se esse `[env]` sumir, todo deploy apaga banco, configurações
+salvas e a sessão do WhatsApp. Volume é 1 máquina / 1 região: manter
+`fly scale count 1`, `min_machines_running = 1`, `auto_stop_machines = false` e
+`strategy = "immediate"`.
+
+Detalhe e ordem de execução: `docs/CONTINUAR-AQUI-fly-vercel.md` e
+`docs/deploy-fly-vercel-runbook.md`. Passo a passo para quem só publica:
+`docs/publicar-alteracoes-passo-a-passo.md`.
 
 ### Gotcha: deploy bloqueado por "commit author sem acesso" (2026-08-24)
 

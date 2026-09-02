@@ -8,3 +8,7 @@ docs
 *.pdf
 *.md
 .git
+
+# nunca deve entrar na imagem (segredos de desenvolvimento)
+.env
+.env.*
