@@ -14,8 +14,8 @@ export function createJobDefinitions(_logger: Logger): JobDefinition[] {
     },
     {
       id: "alertas-criticos",
-      name: "Verificação de casos críticos (10 em 10 min)",
-      cronExpression: "*/10 * * * *",
+      name: "Verificação de casos críticos (5 em 5 min)",
+      cronExpression: "*/5 * * * *",
       run: checkForCriticalUpdates
     },
     {

@@ -34,7 +34,7 @@ export function buildSummaryGreeting(highCount: number, lowCount: number, refere
  * — nível alto (ex.: status "Nível alto" + nível ≥ 90%) e crítico baixo (ex.:
  * "Nível criticamente baixo" + nível ≤ 15%) — distinto do relatório diário
  * (`runDailyReport`, que mostra todos os alarmes combinados) e dos Alertas
- * de 10 em 10 min (`checkForCriticalUpdates`, que são avisos pontuais sem
+ * de 5 em 5 min (`checkForCriticalUpdates`, que são avisos pontuais sem
  * tabela). Mesmo escopo (exclusão + filtro salvo) e mesmo destinatário dos
  * Alertas — cai no destinatário do relatório se o de alerta nunca foi salvo.
  */

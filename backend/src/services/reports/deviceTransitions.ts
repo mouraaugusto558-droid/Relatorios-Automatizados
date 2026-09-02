@@ -1,4 +1,5 @@
 import type { OtodataDevice } from "../otodata";
+import type { OtodataTankLevelLog } from "../otodata";
 import type { DeviceSnapshot } from "../../database/repositories/deviceSnapshotsRepository";
 import type { AlertTriggerConfig } from "./alertConfig";
 import { filterDevices } from "./deviceFilters";
@@ -12,6 +13,11 @@ export interface TransitionResult {
   filled: OtodataDevice[];
 }
 
+export interface HistoricalLevelMatch {
+  device: OtodataDevice;
+  log: OtodataTankLevelLog;
+}
+
 function matchesCriteria(device: OtodataDevice, config: AlertTriggerConfig): boolean {
   return filterDevices([device], config.criteria).length > 0;
 }
@@ -22,7 +28,12 @@ function matchesCriteria(device: OtodataDevice, config: AlertTriggerConfig): boo
  * BatteryAlarm mudam de um poll pro outro e são o que o snapshot guarda de fato.
  */
 function asPreviousDevice(device: OtodataDevice, snapshot: DeviceSnapshot): OtodataDevice {
-  return { ...device, Status: snapshot.status, LastLevel: snapshot.lastLevel, BatteryAlarm: snapshot.batteryAlarm };
+  return {
+    ...device,
+    Status: snapshot.status,
+    LastLevel: snapshot.lastLevel,
+    BatteryAlarm: snapshot.batteryAlarm
+  };
 }
 
 /**
@@ -49,7 +60,9 @@ export function classifyTransitions(
   for (const device of devices) {
     const snapshot = previousSnapshots.get(device.Id);
     const matchesNow = matchesCriteria(device, config);
-    const matchedBefore = snapshot ? matchesCriteria(asPreviousDevice(device, snapshot), config) : false;
+    const matchedBefore = snapshot
+      ? matchesCriteria(asPreviousDevice(device, snapshot), config)
+      : false;
 
     if (matchesNow && !matchedBefore) {
       entered.push(device);
@@ -57,10 +70,45 @@ export function classifyTransitions(
       resolved.push(device);
     }
 
-    if (config.notifyOnFill && device.LastFill !== null && device.LastFill !== (snapshot?.lastFill ?? null)) {
+    if (
+      config.notifyOnFill &&
+      device.LastFill !== null &&
+      device.LastFill !== (snapshot?.lastFill ?? null)
+    ) {
       filled.push(device);
     }
   }
 
   return { entered, resolved, filled };
+}
+
+/**
+ * Procura leituras históricas que atenderam a um limite de nível desde a
+ * última checagem. Isso cobre o caso em que o tanque cruzou o limite e voltou
+ * antes da próxima consulta de `devices`.
+ */
+export function findHistoricalLevelMatches(
+  devices: OtodataDevice[],
+  histories: Map<number, OtodataTankLevelLog[]>,
+  config: AlertTriggerConfig
+): HistoricalLevelMatch[] {
+  if (config.criteria.levelMin === undefined && config.criteria.levelMax === undefined) return [];
+
+  const matches: HistoricalLevelMatch[] = [];
+  for (const device of devices) {
+    const logs = histories.get(device.Id) ?? [];
+    const matchingLog = logs
+      .filter((log) => {
+        if (log.Level === null) return false;
+        return filterDevices([{ ...device, LastLevel: log.Level }], config.criteria).length > 0;
+      })
+      .sort((a, b) => new Date(b.LogDateUtc).getTime() - new Date(a.LogDateUtc).getTime())[0];
+
+    if (matchingLog)
+      matches.push({
+        device: { ...device, LastLevel: matchingLog.Level, LastRead: matchingLog.LogDateUtc },
+        log: matchingLog
+      });
+  }
+  return matches;
 }

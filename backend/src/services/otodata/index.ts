@@ -13,4 +13,9 @@ export function getOtodataClient(): OtodataClient {
   return client;
 }
 
-export type { OtodataClient, OtodataDevice } from "./client";
+export type {
+  OtodataClient,
+  OtodataDevice,
+  OtodataTankLevelLog,
+  OtodataTankLevels
+} from "./client";

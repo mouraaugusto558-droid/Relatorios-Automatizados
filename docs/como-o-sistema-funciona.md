@@ -37,6 +37,11 @@ Arquivos: `backend/src/services/reports/dailyReport.ts` (monta o texto), `device
 Passo a passo do job `relatorio-diario`:
 
 1. Busca todos os tanques na API da Otodata (`getOtodataClient().getDevices()`).
+   - A resposta válida é salva no SQLite como último cadastro conhecido. Se o
+     endpoint completo da Otodata estiver temporariamente indisponível, o
+     sistema reutiliza esse cadastro por até 48 horas e registra o modo
+     degradado no log; sem cadastro válido ou cache dentro do prazo, o job
+     falha explicitamente em vez de gerar alertas com escopo incompleto.
 2. Monta o texto do relatório (`buildDailyReportText`), separado em 3 blocos:
    - **🚨 Alarmes ativos** — tanques com algum problema (vazio, transbordando, nível baixo/alto, consumo anormal, falha de comunicação), ordenados do mais grave pro menos grave.
    - **⛽ Abastecimentos detectados** — tanques que foram reabastecidos recentemente.
@@ -69,6 +74,8 @@ Arquivos: `backend/src/jobs/definitions.ts` e `backend/src/jobs/scheduler.ts`.
   | Job | Quando roda | O que faz |
   |---|---|---|
   | `relatorio-diario` | todo dia às 08:00 | gera e envia o relatório diário |
+  | `alertas-criticos` | a cada 5 minutos | envia texto quando um tanque entra no critério crítico; o mesmo ID fica 48h sem novo alerta |
+  | `resumo-critico-diario` | todo dia às 08:00 | envia o resumo separado de nível alto e crítico baixo |
 
   > Existiram também os jobs `automacao-meio-dia` (12:00, nunca implementado)
   > e `teste-1030` (10:30, temporário para validar o fuso horário do
@@ -78,6 +85,11 @@ Arquivos: `backend/src/jobs/definitions.ts` e `backend/src/jobs/scheduler.ts`.
   > O job `sincronizacao-dados` (Supabase/Google Sheets) existiu até
   > `2026-08-24` e foi removido — ver seção 5.
 - **Importante:** isso só dispara se o processo do backend estiver rodando naquele horário. Se o servidor estiver desligado às 08:00, aquele disparo é perdido (não há "reprocessamento" automático depois).
+- Quando o cadastro completo (`/devices`) está indisponível, os alertas com
+  filtro de nível ainda consultam o histórico (`/tanklevels`) e usam a leitura
+  mais recente para avaliar o nível. O cadastro em cache mantém os metadados e
+  filtros; não são feitas chamadas individuais para todos os tanques a cada
+  ciclo.
 - Pela tela de **Jobs**, dá pra ativar/desativar cada job e rodar manualmente (`Rodar agora`) sem esperar o horário programado.
 
 ## 5. Sincronização de dados (Supabase / Google Sheets) — removida em 2026-08-24

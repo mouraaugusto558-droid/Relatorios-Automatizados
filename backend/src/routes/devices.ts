@@ -1,8 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { getDatabase } from "../database";
 import { createRepositories } from "../database/repositories";
-import { getOtodataClient } from "../services/otodata";
 import { STATUS_META } from "../services/reports/deviceSelectors";
+import { getAllDevices } from "../services/reports/monitoredScope";
 
 interface ExcludeDevicesBody {
   deviceIds: number[];
@@ -14,7 +14,7 @@ export async function devicesRoutes(app: FastifyInstance): Promise<void> {
   // Lista crua, sem nenhum filtro/exclusão aplicado — a aba de exclusão
   // precisa enxergar todo mundo, inclusive quem já está excluído, pra poder
   // restaurar.
-  app.get("/api/devices", async () => getOtodataClient().getDevices());
+  app.get("/api/devices", async () => await getAllDevices());
 
   app.get("/api/devices/status-options", async () =>
     Object.entries(STATUS_META).map(([value, meta]) => ({
@@ -32,7 +32,7 @@ export async function devicesRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: "empty_device_ids" });
     }
 
-    const devices = await getOtodataClient().getDevices();
+    const devices = await getAllDevices();
     const deviceById = new Map(devices.map((device) => [device.Id, device]));
 
     const excluded: number[] = [];

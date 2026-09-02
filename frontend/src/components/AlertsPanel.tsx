@@ -263,8 +263,9 @@ export function AlertsPanel() {
               Alertas de Casos Críticos
             </h2>
             <p className="card-subtitle">
-              Checagem a cada 10 minutos: só manda mensagem quando algo realmente muda dentro do escopo monitorado
-              (mesma exclusão + filtro salvo do relatório das 08:00). Sem repetir um caso que já foi avisado.
+              Checagem a cada 5 minutos: só manda mensagem quando algo realmente muda dentro do escopo monitorado
+              (mesma exclusão + filtro salvo do relatório das 08:00). Um mesmo tanque não é avisado novamente por
+              48 horas.
             </p>
           </div>
 

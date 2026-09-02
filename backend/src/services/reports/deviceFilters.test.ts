@@ -48,6 +48,53 @@ test("filterDevices: LastLevel nulo não passa quando há filtro de nível", () 
   assert.equal(filterDevices(devices, { levelMin: 10 }).length, 0);
 });
 
+test("filterDevices: nível mínimo é inclusivo e usa porcentagem", () => {
+  const devices = [
+    makeDevice({ Id: 1, LastLevel: 0.9 }),
+    makeDevice({ Id: 2, LastLevel: 0.8999 }),
+    makeDevice({ Id: 3, LastLevel: 1 })
+  ];
+  assert.deepEqual(
+    filterDevices(devices, { levelMin: 90 }).map((device) => device.Id),
+    [1, 3]
+  );
+});
+
+test("filterDevices: status OK representa o tanque Normal e combina com nível", () => {
+  const devices = [
+    makeDevice({ Id: 1, Status: "OK", LastLevel: 0.95 }),
+    makeDevice({ Id: 2, Status: "OK", LastLevel: 0.85 }),
+    makeDevice({ Id: 3, Status: "HIGH ALARM", LastLevel: 0.95 })
+  ];
+  assert.deepEqual(
+    filterDevices(devices, { statuses: ["OK"], levelMin: 90 }).map((device) => device.Id),
+    [1]
+  );
+});
+
+test("filterDevices: empty status list means any status", () => {
+  const devices = [
+    makeDevice({ Id: 1, Status: "OK" }),
+    makeDevice({ Id: 2, Status: "HIGH ALARM" })
+  ];
+  assert.deepEqual(
+    filterDevices(devices, { statuses: [], levelMin: 40 }).map((device) => device.Id),
+    [1, 2]
+  );
+});
+
+test("filterDevices: minimum and maximum levels are both inclusive", () => {
+  const devices = [
+    makeDevice({ Id: 1, LastLevel: 0.1 }),
+    makeDevice({ Id: 2, LastLevel: 0.5 }),
+    makeDevice({ Id: 3, LastLevel: 0.9 })
+  ];
+  assert.deepEqual(
+    filterDevices(devices, { levelMin: 10, levelMax: 90 }).map((device) => device.Id),
+    [1, 2, 3]
+  );
+});
+
 test("filterDevices: cidade/região/produto são case-insensitive e combinam com OU dentro da categoria", () => {
   const devices = [
     makeDevice({ Id: 1, City: "Belém" }),
@@ -77,7 +124,10 @@ test("filterDevices: busca livre testa Name/TankName/TankNumber", () => {
 });
 
 test("filterDevices: batteryAlarm filtra por igualdade exata", () => {
-  const devices = [makeDevice({ Id: 1, BatteryAlarm: true }), makeDevice({ Id: 2, BatteryAlarm: false })];
+  const devices = [
+    makeDevice({ Id: 1, BatteryAlarm: true }),
+    makeDevice({ Id: 2, BatteryAlarm: false })
+  ];
   assert.deepEqual(
     filterDevices(devices, { batteryAlarm: true }).map((d) => d.Id),
     [1]

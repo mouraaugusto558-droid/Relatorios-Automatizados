@@ -28,14 +28,13 @@ export function createScheduler(
 
   function seedDefinitions(): void {
     for (const definition of definitions) {
-      if (!jobsRepository.findById(definition.id)) {
-        jobsRepository.upsert({
-          id: definition.id,
-          name: definition.name,
-          cronExpression: definition.cronExpression,
-          enabled: true
-        });
-      }
+      const existing = jobsRepository.findById(definition.id);
+      jobsRepository.upsert({
+        id: definition.id,
+        name: definition.name,
+        cronExpression: definition.cronExpression,
+        enabled: existing?.enabled ?? true
+      });
     }
     jobsRepository.deleteNotIn(definitions.map((definition) => definition.id));
   }

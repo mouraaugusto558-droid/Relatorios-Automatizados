@@ -16,7 +16,7 @@ interface AlertCriteriaPayload {
 
 /** O que dentro do escopo monitorado (mesma exclusão + filtro salvo do
  * relatório diário) é grave o suficiente pra virar um alerta a cada checagem
- * de 10 min — configuração separada do filtro do relatório. */
+ * de 5 min — configuração separada do filtro do relatório. */
 export function useAlertCriteria(): {
   config: AlertTriggerConfig;
   refresh: () => Promise<void>;

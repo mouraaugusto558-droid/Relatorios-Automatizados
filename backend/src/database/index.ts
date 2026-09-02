@@ -68,6 +68,12 @@ export function runMigrations(database: DatabaseSync): void {
       updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
 
+    CREATE TABLE IF NOT EXISTS device_catalog (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      devices_json TEXT NOT NULL,
+      saved_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS alert_history (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sent_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
@@ -76,6 +82,11 @@ export function runMigrations(database: DatabaseSync): void {
       resolved_count INTEGER NOT NULL,
       filled_count INTEGER NOT NULL,
       message TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS alert_cooldowns (
+      device_id INTEGER PRIMARY KEY,
+      last_alert_at TEXT NOT NULL
     );
   `);
 
