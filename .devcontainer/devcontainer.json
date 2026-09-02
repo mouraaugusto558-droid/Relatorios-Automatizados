@@ -9,10 +9,16 @@
     "ghcr.io/devcontainers/features/github-cli:1": {}
   },
 
-  // Instala o CLI da Fly e as dependencias do projeto. Roda uma vez, na
+  // Instala as dependencias do projeto e o CLI da Fly. Roda uma vez, na
   // criacao do Codespace (leva alguns minutos; depois disso o ambiente
   // reabre em segundos).
-  "postCreateCommand": "curl -L https://fly.io/install.sh | sh && npm ci",
+  //
+  // Separado por ";" e nao por "&&" de proposito: com "&&", uma falha na
+  // instalacao do CLI da Fly impedia o "npm ci" de rodar, e o Codespace
+  // nascia sem node_modules — o erro aparecia so depois, como
+  // "sh: 1: tsc: not found". O npm ci vem primeiro por ser o essencial;
+  // sem o CLI da Fly da para editar e testar, sem node_modules nao.
+  "postCreateCommand": "npm ci; curl -L https://fly.io/install.sh | sh",
 
   "remoteEnv": {
     "PATH": "/home/vscode/.fly/bin:${containerEnv:PATH}"

@@ -21,3 +21,6 @@ Thumbs.db
 
 # dump do codigo-fonte gerado localmente, nao faz parte do projeto
 MeuNovoProjeto-codigo-fonte.zip
+
+# arquivo local com credenciais de teste — NUNCA versionar
+CREDENCIAIS-codespace.local.md

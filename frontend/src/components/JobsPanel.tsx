@@ -111,7 +111,8 @@ export function JobsPanel() {
               Jobs &amp; Agendamentos
             </h2>
             <p className="card-subtitle">
-              Configure, monitore e acione as tarefas periódicas automatizadas pelo sistema.
+              Configure, monitore e acione as tarefas periódicas do sistema. Os horários
+              seguem o fuso de Brasília.
             </p>
           </div>
 
