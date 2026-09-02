@@ -14,14 +14,17 @@ export function createJobDefinitions(_logger: Logger): JobDefinition[] {
     },
     {
       id: "alertas-criticos",
-      name: "Verificação de casos críticos (5 em 5 min)",
-      cronExpression: "*/5 * * * *",
+      name: "Verificação de casos críticos (10 em 10 min)",
+      cronExpression: "*/10 * * * *",
       run: checkForCriticalUpdates
     },
     {
+      // 08:30, e não 08:00, para não disputar a API da Otodata com o
+      // "relatorio-diario" acima — os dois batem na mesma API e rodavam
+      // no mesmo minuto.
       id: "resumo-critico-diario",
-      name: "Resumo diário — nível alto e baixo (08:00)",
-      cronExpression: "0 8 * * *",
+      name: "Resumo diário — nível alto e baixo (08:30)",
+      cronExpression: "30 8 * * *",
       run: runCriticalLevelsSummary
     }
   ];

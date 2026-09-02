@@ -34,14 +34,30 @@ test("scheduler: start seeds job definitions into the repository", () => {
   scheduler.stop();
 });
 
-test("scheduler: critical alerts are scheduled every five minutes", () => {
+test("scheduler: critical alerts are scheduled every ten minutes", () => {
   const definition = createJobDefinitions(silentLogger()).find(
     (item) => item.id === "alertas-criticos"
   );
 
   assert.ok(definition);
-  assert.equal(definition?.cronExpression, "*/5 * * * *");
-  assert.match(definition?.name ?? "", /5 em 5 min/);
+  assert.equal(definition?.cronExpression, "*/10 * * * *");
+  assert.match(definition?.name ?? "", /10 em 10 min/);
+});
+
+// O relatório diário e o resumo de níveis batem na mesma API da Otodata.
+// Rodavam os dois às 08:00; foram separados para não disputar a API no mesmo
+// minuto. Este teste existe para que uma mudança acidental volte a juntá-los
+// sem ninguém perceber.
+test("scheduler: daily report and levels summary do not run at the same time", () => {
+  const definitions = createJobDefinitions(silentLogger());
+  const relatorio = definitions.find((item) => item.id === "relatorio-diario");
+  const resumo = definitions.find((item) => item.id === "resumo-critico-diario");
+
+  assert.ok(relatorio);
+  assert.ok(resumo);
+  assert.equal(relatorio?.cronExpression, "0 8 * * *");
+  assert.equal(resumo?.cronExpression, "30 8 * * *");
+  assert.notEqual(relatorio?.cronExpression, resumo?.cronExpression);
 });
 
 test("scheduler: runNow records a successful run", async () => {
