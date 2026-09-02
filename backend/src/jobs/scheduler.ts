@@ -10,6 +10,8 @@ export interface JobDefinition {
   run(): Promise<void>;
 }
 
+type ExecutionOutcome = "executed" | "skipped";
+
 export interface Scheduler {
   start(): void;
   stop(): void;
@@ -39,26 +41,28 @@ export function createScheduler(
     jobsRepository.deleteNotIn(definitions.map((definition) => definition.id));
   }
 
-  async function executeJob(definition: JobDefinition): Promise<void> {
-    try {
-      if (jobRunsRepository.isRunning(definition.id)) {
-        logger.warn(`job "${definition.id}" já está em execução, disparo ignorado`);
-        return;
-      }
+  /**
+   * Registra a execução em `job_runs` e **relança** qualquer falha. Quem chama decide
+   * o que fazer com ela: o disparo agendado só engole (não há ninguém para receber),
+   * e o `runNow` propaga até a rota HTTP para o painel mostrar o erro de verdade —
+   * antes, o erro morria aqui e a tela dizia "Job finalizado!" mesmo quando quebrava.
+   */
+  async function executeJob(definition: JobDefinition): Promise<ExecutionOutcome> {
+    if (jobRunsRepository.isRunning(definition.id)) {
+      logger.warn(`job "${definition.id}" já está em execução, disparo ignorado`);
+      return "skipped";
+    }
 
-      const runId = jobRunsRepository.start(definition.id);
-      try {
-        await definition.run();
-        jobRunsRepository.finish(runId, "success");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        jobRunsRepository.finish(runId, "error", message);
-        logger.error(error, `job "${definition.id}" falhou`);
-      }
+    const runId = jobRunsRepository.start(definition.id);
+    try {
+      await definition.run();
+      jobRunsRepository.finish(runId, "success");
+      return "executed";
     } catch (error) {
-      // Falha antes/depois do registro do run (ex.: banco indisponível no instante do disparo).
-      // Nunca deixar escapar como rejeição não tratada — o Cron chama executeJob sem await.
-      logger.error(error, `falha inesperada ao processar o job "${definition.id}"`);
+      const message = error instanceof Error ? error.message : String(error);
+      jobRunsRepository.finish(runId, "error", message);
+      logger.error(error, `job "${definition.id}" falhou`);
+      throw error;
     }
   }
 
@@ -67,7 +71,9 @@ export function createScheduler(
     // Fixamos o fuso aqui para que os horários definidos em `definitions.ts`
     // (ex.: "08:00") disparem no horário de Brasília real, e não 3h adiantados.
     const task = new Cron(cronExpression, { timezone: "America/Sao_Paulo" }, () => {
-      void executeJob(definition);
+      // O Cron chama sem await: sem este catch, uma falha vira rejeição não tratada.
+      // O erro já foi gravado em `job_runs` e logado dentro do executeJob.
+      void executeJob(definition).catch(() => undefined);
     });
     tasks.set(definition.id, task);
   }
@@ -95,7 +101,13 @@ export function createScheduler(
       if (!definition) {
         throw new Error(`job desconhecido: ${jobId}`);
       }
-      await executeJob(definition);
+
+      const outcome = await executeJob(definition);
+      if (outcome === "skipped") {
+        throw new Error(
+          `O job "${definition.name}" já está em execução — aguarde a execução atual terminar.`
+        );
+      }
     },
 
     setEnabled(jobId: string, enabled: boolean): void {

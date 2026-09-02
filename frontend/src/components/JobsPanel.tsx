@@ -61,12 +61,12 @@ export function JobsPanel() {
         message: `Iniciando a execução do job "${job.name}".`
       }),
       success: (_result, job) => ({
-        title: "Job finalizado!",
-        message: `A execução de "${job.name}" foi concluída.`
+        title: "Job concluído com sucesso",
+        message: `"${job.name}" rodou até o fim e o envio foi confirmado pelo WhatsApp.`
       }),
       error: (err) =>
         err instanceof ApiError
-          ? { title: "Erro ao rodar job", message: `O backend retornou status: ${err.status}` }
+          ? { title: "O job falhou", message: err.message }
           : { title: "Falha na requisição", message: "Não foi possível conectar ao servidor." }
     }
   );

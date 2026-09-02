@@ -6,6 +6,8 @@ export interface Report {
   name: string;
   filePath: string;
   status: "pending" | "generated" | "sent" | "error";
+  /** Motivo da falha quando `status === "error"`. */
+  error: string | null;
   createdAt: string;
 }
 

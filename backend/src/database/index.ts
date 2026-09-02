@@ -44,6 +44,7 @@ export function runMigrations(database: DatabaseSync): void {
       name TEXT NOT NULL,
       file_path TEXT NOT NULL,
       status TEXT NOT NULL,
+      error TEXT,
       created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
     );
 
@@ -107,6 +108,14 @@ export function runMigrations(database: DatabaseSync): void {
   const snapshotColumns = database.prepare(`PRAGMA table_info(device_snapshots)`).all() as { name: string }[];
   if (!snapshotColumns.some((column) => column.name === "battery_alarm")) {
     database.exec(`ALTER TABLE device_snapshots ADD COLUMN battery_alarm INTEGER NOT NULL DEFAULT 0`);
+  }
+
+  // Mesmo caso da coluna acima. Sem `error`, um relatório com status "error" não
+  // guardava o motivo em lugar nenhum e o painel só conseguia mostrar um texto
+  // genérico ("Falha ao gerar ou enviar o relatório") — inútil para diagnosticar.
+  const reportColumns = database.prepare(`PRAGMA table_info(reports)`).all() as { name: string }[];
+  if (!reportColumns.some((column) => column.name === "error")) {
+    database.exec(`ALTER TABLE reports ADD COLUMN error TEXT`);
   }
 }
 

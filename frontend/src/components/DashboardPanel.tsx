@@ -70,7 +70,7 @@ export function DashboardPanel({ onNavigateTab }: DashboardPanelProps) {
     .filter((report) => report.status === "error")
     .map((report) => ({
       source: `Relatório: ${report.name}`,
-      message: "Falha ao gerar ou enviar o relatório",
+      message: report.error || "Falha ao gerar ou enviar o relatório",
       time: report.createdAt
     }));
 

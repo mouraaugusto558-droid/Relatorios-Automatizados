@@ -7,6 +7,7 @@ export interface Report {
   name: string;
   filePath: string;
   status: ReportStatus;
+  error: string | null;
   createdAt: string;
 }
 
@@ -15,6 +16,7 @@ interface ReportRow {
   name: string;
   file_path: string;
   status: ReportStatus;
+  error: string | null;
   created_at: string;
 }
 
@@ -24,13 +26,14 @@ function toReport(row: ReportRow): Report {
     name: row.name,
     filePath: row.file_path,
     status: row.status,
+    error: row.error ?? null,
     createdAt: row.created_at
   };
 }
 
 export interface ReportsRepository {
   create(name: string, filePath: string, status: ReportStatus): number;
-  updateStatus(id: number, status: ReportStatus): void;
+  updateStatus(id: number, status: ReportStatus, error?: string): void;
   getById(id: number): Report | undefined;
   list(limit?: number): Report[];
 }
@@ -39,7 +42,7 @@ export function createReportsRepository(database: DatabaseSync): ReportsReposito
   const createStmt = database.prepare(
     `INSERT INTO reports (name, file_path, status, created_at) VALUES (?, ?, ?, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))`
   );
-  const updateStatusStmt = database.prepare(`UPDATE reports SET status = ? WHERE id = ?`);
+  const updateStatusStmt = database.prepare(`UPDATE reports SET status = ?, error = ? WHERE id = ?`);
   const getByIdStmt = database.prepare(`SELECT * FROM reports WHERE id = ?`);
   const listStmt = database.prepare(`SELECT * FROM reports ORDER BY id DESC LIMIT ?`);
 
@@ -48,8 +51,8 @@ export function createReportsRepository(database: DatabaseSync): ReportsReposito
       const result = createStmt.run(name, filePath, status);
       return Number(result.lastInsertRowid);
     },
-    updateStatus(id: number, status: ReportStatus): void {
-      updateStatusStmt.run(status, id);
+    updateStatus(id: number, status: ReportStatus, error?: string): void {
+      updateStatusStmt.run(status, error ?? null, id);
     },
     getById(id: number): Report | undefined {
       const row = getByIdStmt.get(id) as ReportRow | undefined;

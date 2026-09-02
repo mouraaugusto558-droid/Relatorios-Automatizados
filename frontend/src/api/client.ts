@@ -30,6 +30,20 @@ export function onUnauthorized(listener: UnauthorizedListener): () => void {
   return () => unauthorizedListeners.delete(listener);
 }
 
+/**
+ * Extrai o `message` que o backend manda junto do erro (ex.: o motivo real de um
+ * job ter falhado). Sem isto o painel só conseguia dizer "status 500", que não
+ * ajuda ninguém a entender o que quebrou.
+ */
+async function readErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.json()) as { message?: unknown };
+    return typeof body.message === "string" && body.message.length > 0 ? body.message : null;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, { ...init, credentials: "include" });
 
@@ -38,7 +52,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       unauthorizedListeners.forEach((listener) => listener());
     }
     const method = init?.method ?? "GET";
-    throw new ApiError(`API ${method} ${path} falhou (${response.status})`, response.status);
+    const detail = await readErrorMessage(response);
+    throw new ApiError(detail ?? `API ${method} ${path} falhou (${response.status})`, response.status);
   }
 
   return (await response.json()) as T;

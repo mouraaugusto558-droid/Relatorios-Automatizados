@@ -30,8 +30,15 @@ export async function jobsRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(404).send({ error: "job_not_found" });
     }
 
-    await getScheduler().runNow(job.id);
-    return { ok: true };
+    try {
+      await getScheduler().runNow(job.id);
+      return { ok: true };
+    } catch (error) {
+      // O motivo real da falha vai no corpo da resposta: é o que o painel exibe.
+      // Sem isto o usuário só via "Job finalizado!" mesmo quando o envio quebrava.
+      const message = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: "job_failed", message });
+    }
   });
 
   app.post<{ Params: { id: string }; Body: ToggleBody }>("/api/jobs/:id/toggle", async (request, reply) => {

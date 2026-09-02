@@ -50,10 +50,12 @@ export async function runDailyReport(): Promise<void> {
 
   const jid = buildRecipientJid(recipient);
   try {
+    // "sent" aqui significa entregue de verdade: o `sendMessage` do manager só
+    // retorna depois do ACK do servidor do WhatsApp.
     await getWhatsAppManager().sendMessage(jid, reportText);
     reportsRepository.updateStatus(reportId, "sent");
   } catch (error) {
-    reportsRepository.updateStatus(reportId, "error");
+    reportsRepository.updateStatus(reportId, "error", error instanceof Error ? error.message : String(error));
     throw error;
   }
 

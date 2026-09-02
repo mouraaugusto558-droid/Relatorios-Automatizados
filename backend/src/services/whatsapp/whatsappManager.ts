@@ -36,6 +36,19 @@ export interface WhatsAppManager {
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
 
+// `socket.sendMessage` do Baileys resolve assim que a mensagem é cifrada e escrita
+// no websocket — isso NÃO significa que o servidor do WhatsApp a aceitou. Um socket
+// "meio-morto" (TCP ainda aberto, sessão já inválida do outro lado) engole a escrita
+// e a mensagem some, sem erro nenhum: foi o que aconteceu em 2026-09-02, quando
+// quatro relatórios apareceram como "Enviado" no painel e nenhum chegou. Por isso
+// todo envio espera o ACK do servidor (status >= SERVER_ACK) antes de ser dado
+// como concluído.
+const SERVER_ACK_STATUS = 2;
+const ACK_TIMEOUT_MS = 30_000;
+// Cobre a corrida entre o `sendMessage` resolver e o waiter conseguir se registrar:
+// o ACK pode chegar nesse intervalo. Limitado para não crescer indefinidamente.
+const ACK_HISTORY_LIMIT = 200;
+
 export function createWhatsAppManager(authPath: string): WhatsAppManager {
   const logger = createServiceLogger();
   const emitter = new EventEmitter();
@@ -49,6 +62,13 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
   let reconnectTimer: NodeJS.Timeout | null = null;
   let lastEventAt: string | null = null;
 
+  const ackEmitter = new EventEmitter();
+  // Um listener por envio em andamento. O limite padrão de 10 dispararia um aviso
+  // falso de vazamento quando as várias imagens da planilha saem em sequência.
+  ackEmitter.setMaxListeners(0);
+  const acknowledgedIds = new Set<string>();
+  const acknowledgedOrder: string[] = [];
+
   function currentStatus(): WhatsAppStatus {
     return { status, phoneNumber, qrCode, lastEventAt };
   }
@@ -56,6 +76,89 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
   function notify(): void {
     lastEventAt = new Date().toISOString();
     emitter.emit("change", currentStatus());
+  }
+
+  function recordAck(messageId: string): void {
+    if (acknowledgedIds.has(messageId)) return;
+
+    acknowledgedIds.add(messageId);
+    acknowledgedOrder.push(messageId);
+    if (acknowledgedOrder.length > ACK_HISTORY_LIMIT) {
+      const oldest = acknowledgedOrder.shift();
+      if (oldest) acknowledgedIds.delete(oldest);
+    }
+
+    ackEmitter.emit(messageId);
+  }
+
+  function waitForServerAck(messageId: string): Promise<void> {
+    if (acknowledgedIds.has(messageId)) return Promise.resolve();
+
+    return new Promise((resolve, reject) => {
+      // Declaração de função (hoisted) para poder referenciar o `timer` criado
+      // logo abaixo — o listener só roda depois que ele existe.
+      function onAck(): void {
+        clearTimeout(timer);
+        resolve();
+      }
+
+      const timer = setTimeout(() => {
+        ackEmitter.off(messageId, onAck);
+        reject(
+          new Error(
+            `O servidor do WhatsApp não confirmou o envio em ${ACK_TIMEOUT_MS / 1000}s — a conexão está inutilizável`
+          )
+        );
+      }, ACK_TIMEOUT_MS);
+
+      ackEmitter.once(messageId, onAck);
+    });
+  }
+
+  /**
+   * Derruba um socket que aceita escritas mas não recebe ACK do servidor. Sem isto a
+   * sessão morta continuaria marcada como "connected" para sempre e todo envio
+   * seguinte cairia no mesmo buraco silencioso — o `scheduleReconnect` sobe uma
+   * sessão nova a partir das credenciais salvas.
+   */
+  function dropDeadSocket(): void {
+    const deadSocket = socket;
+    socket = null;
+    phoneNumber = null;
+    reconnectAttempts = 0;
+
+    try {
+      deadSocket?.end(new Error("ACK do servidor não recebido"));
+    } catch {
+      // O socket já pode estar inutilizável; o que importa é agendar a reconexão.
+    }
+
+    scheduleReconnect();
+  }
+
+  /**
+   * Único caminho de envio: despacha a mensagem e só retorna depois que o servidor
+   * do WhatsApp confirmar o recebimento. Quem chama pode tratar a exceção como
+   * "não foi entregue" — ver comentário em SERVER_ACK_STATUS.
+   */
+  async function sendWithAck(jid: string, content: AnyMessageContent): Promise<void> {
+    const activeSocket = socket;
+    if (!activeSocket || status !== "connected") {
+      throw new Error("WhatsApp não está conectado");
+    }
+
+    const sent = await activeSocket.sendMessage(jid, content);
+    const messageId = sent?.key?.id;
+    if (!messageId) {
+      throw new Error("O WhatsApp não devolveu identificador da mensagem — envio não confirmado");
+    }
+
+    try {
+      await waitForServerAck(messageId);
+    } catch (error) {
+      dropDeadSocket();
+      throw error;
+    }
   }
 
   function scheduleReconnect(): void {
@@ -95,6 +198,20 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
     });
 
     socket.ev.on("creds.update", saveCreds);
+
+    // Confirmação de que o servidor aceitou a mensagem — é o sinal que o
+    // `sendWithAck` fica esperando.
+    socket.ev.on("messages.update", (updates) => {
+      for (const { key, update } of updates) {
+        // `update.status` é o enum proto.WebMessageInfo.Status; comparamos pelo valor
+        // numérico para não precisar carregar o proto só por causa de uma constante.
+        // Sem status (null/undefined) vira -1, que nunca passa no teste abaixo.
+        const ackStatus = Number(update.status ?? -1);
+        if (key.id && ackStatus >= SERVER_ACK_STATUS) {
+          recordAck(key.id);
+        }
+      }
+    });
 
     socket.ev.on("connection.update", (update) => {
       const { connection, qr, lastDisconnect } = update;
@@ -173,26 +290,15 @@ export function createWhatsAppManager(authPath: string): WhatsAppManager {
     },
 
     async sendMessage(jid: string, text: string): Promise<void> {
-      if (!socket || status !== "connected") {
-        throw new Error("WhatsApp não está conectado");
-      }
-      await socket.sendMessage(jid, { text });
+      await sendWithAck(jid, { text });
     },
 
     async sendImage(jid: string, image: Buffer, caption?: string): Promise<void> {
-      if (!socket || status !== "connected") {
-        throw new Error("WhatsApp não está conectado");
-      }
-      const content: AnyMessageContent = { image, caption };
-      await socket.sendMessage(jid, content);
+      await sendWithAck(jid, { image, caption });
     },
 
     async sendDocument(jid: string, document: Buffer, fileName: string, mimetype: string): Promise<void> {
-      if (!socket || status !== "connected") {
-        throw new Error("WhatsApp não está conectado");
-      }
-      const content: AnyMessageContent = { document, fileName, mimetype };
-      await socket.sendMessage(jid, content);
+      await sendWithAck(jid, { document, fileName, mimetype });
     },
 
     async listGroups(): Promise<WhatsAppGroup[]> {
